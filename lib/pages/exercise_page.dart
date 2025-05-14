@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:on_beat/services/accelerometer_service.dart';
 
@@ -40,6 +41,29 @@ class _ExercisePageState extends State<ExercisePage> {
               child: Text("stop"),
             ),
             Text(_counter.toString()),
+            SizedBox(
+              width: 400,
+              height: 200,
+              child: LineChart(
+                LineChartData(
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: List.generate(
+                        AccelerometerService.magnitudesForChart.length,
+                        (i) => FlSpot(
+                          i.toDouble(),
+                          AccelerometerService.magnitudesForChart[i],
+                        ),
+                      ),
+                      isCurved: true,
+                      color: Colors.blue,
+                      belowBarData: BarAreaData(show: false),
+                      dotData: FlDotData(show: false),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
