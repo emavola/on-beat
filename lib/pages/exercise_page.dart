@@ -49,6 +49,26 @@ class _ExercisePageState extends State<ExercisePage> {
                   lineBarsData: [
                     LineChartBarData(
                       spots: List.generate(
+                        acc.getDerivative().length,
+                        (i) => FlSpot(i.toDouble(), acc.getDerivative()[i]),
+                      ),
+                      isCurved: true,
+                      color: Colors.blue,
+                      belowBarData: BarAreaData(show: false),
+                      dotData: FlDotData(show: false),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 400,
+              height: 200,
+              child: LineChart(
+                LineChartData(
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: List.generate(
                         AccelerometerService.magnitudesForChart.length,
                         (i) => FlSpot(
                           i.toDouble(),
