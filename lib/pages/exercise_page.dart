@@ -8,8 +8,11 @@ class ExercisePage extends StatefulWidget {
   State<ExercisePage> createState() => _ExercisePageState();
 }
 
-class _ExercisePageState extends State<ExercisePage> {
+class _ExercisePageState extends State<ExercisePage>
+    with SingleTickerProviderStateMixin {
   final AccelerometerService acc = AccelerometerService();
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
   int _counter = 0;
 
@@ -20,6 +23,14 @@ class _ExercisePageState extends State<ExercisePage> {
         () => setState(() {
           _counter++;
         });
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 5),
+    );
+    _animation = Tween<double>(begin: -1, end: 1).animate(_controller)
+      ..addListener(() {
+        setState(() {});
+      });
   }
 
   @override
@@ -33,55 +44,30 @@ class _ExercisePageState extends State<ExercisePage> {
         child: Column(
           children: [
             ElevatedButton(
-              onPressed: AccelerometerService().start,
+              onPressed: () {
+                _controller.reset();
+                _controller.forward();
+              },
               child: Text("Start"),
             ),
-            ElevatedButton(
-              onPressed: AccelerometerService().stop,
-              child: Text("stop"),
-            ),
-            Text(_counter.toString()),
             SizedBox(
-              width: 400,
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: List.generate(
-                        acc.getDerivative().length,
-                        (i) => FlSpot(i.toDouble(), acc.getDerivative()[i]),
-                      ),
-                      isCurved: true,
-                      color: Colors.blue,
-                      belowBarData: BarAreaData(show: false),
-                      dotData: FlDotData(show: false),
+              width: double.infinity,
+              height: 300,
+              child: Stack(
+                children: <Widget>[
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      color: Colors.white,
+                      width: double.infinity,
+                      height: 3,
                     ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 400,
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: List.generate(
-                        AccelerometerService.magnitudesForChart.length,
-                        (i) => FlSpot(
-                          i.toDouble(),
-                          AccelerometerService.magnitudesForChart[i],
-                        ),
-                      ),
-                      isCurved: true,
-                      color: Colors.blue,
-                      belowBarData: BarAreaData(show: false),
-                      dotData: FlDotData(show: false),
-                    ),
-                  ],
-                ),
+                  ),
+                  Align(
+                    alignment: Alignment(_animation.value, 0),
+                    child: Container(color: Colors.amber, width: 3, height: 50),
+                  ),
+                ],
               ),
             ),
           ],
