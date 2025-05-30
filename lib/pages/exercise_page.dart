@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:on_beat/services/accelerometer_service.dart';
+import 'package:on_beat/widgets/note_painter.dart';
 
 class ExercisePage extends StatefulWidget {
   const ExercisePage({super.key});
@@ -50,24 +51,11 @@ class _ExercisePageState extends State<ExercisePage>
               },
               child: Text("Start"),
             ),
-            SizedBox(
-              width: double.infinity,
-              height: 300,
-              child: Stack(
-                children: <Widget>[
-                  Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      color: Colors.white,
-                      width: double.infinity,
-                      height: 3,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment(_animation.value, 0),
-                    child: Container(color: Colors.amber, width: 3, height: 50),
-                  ),
-                ],
+            Center(
+              child: SizedBox(
+                width: double.infinity,
+                height: 300,
+                child: CustomPaint(painter: NotePainter()),
               ),
             ),
           ],
