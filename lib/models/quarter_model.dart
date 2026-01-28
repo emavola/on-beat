@@ -1,40 +1,36 @@
-import 'package:on_beat/models/note_model.dart';
-
 class QuarterModel {
-  final List<NoteModel> notes;
+  /// 0     -> terzina
+  /// 1..15 -> pattern binario su 4 sedicesimi
+  final int pattern;
 
-  QuarterModel(int rythmPattern) : notes = _parseQuarterMask(rythmPattern);
+  final String assetPath;
 
-  static List<NoteModel> _parseQuarterMask(int mask) {
-    final List<NoteModel> result = [];
-    final bits = List.generate(4, (i) => ((mask >> (3 - i)) & 1) == 1);
+  const QuarterModel._({required this.pattern, required this.assetPath});
 
-    int i = 0;
-    bool isRest = true;
-    int count = 0;
+  factory QuarterModel.fromPattern(int pattern) {
+    assert(pattern >= 0 && pattern <= 15);
 
-    // Step through all bits
-    while (i < 4) {
-      if (!bits[i]) {
-        count++;
-        i++;
-        continue;
-      }
-      if (i != 0) {
-        result.add(NoteModel(duration: count / 4.0, isNote: !isRest));
-      }
-
-      count = 1;
-      isRest = false;
-      i++;
-    }
-    result.add(NoteModel(duration: count / 4.0, isNote: isRest));
-
-    return result;
+    return QuarterModel._(
+      pattern: pattern,
+      assetPath: 'assets/figures/$pattern.png',
+    );
   }
 
-  @override
-  String toString() {
-    return notes.toString();
+  List<double> get expectedHits {
+    // TERZINA
+    if (pattern == 0) {
+      return const [0.0, 1 / 3, 2 / 3];
+    }
+
+    final hits = <double>[];
+
+    for (int i = 0; i < 4; i++) {
+      final bit = (pattern >> (3 - i)) & 1;
+      if (bit == 1) {
+        hits.add(i / 4);
+      }
+    }
+
+    return hits;
   }
 }

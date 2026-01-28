@@ -1,7 +1,9 @@
-import 'package:on_beat/models/note_model.dart';
+import 'quarter_model.dart';
 
 class MeasureModel {
-  final List<NoteModel> notes;
+  final List<QuarterModel> quarters;
 
-  MeasureModel({required this.notes});
+  MeasureModel(this.quarters) : assert(quarters.length == 4);
+
+  QuarterModel operator [](int index) => quarters[index];
 }
