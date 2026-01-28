@@ -3,6 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class NotePainter extends CustomPainter {
+  final int noteType;
+
+  NotePainter({required this.noteType});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint =

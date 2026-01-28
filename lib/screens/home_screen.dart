@@ -7,8 +7,8 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: ElevatedButton(
-        onPressed: () => Navigator.pushNamed(context, '/exercize'),
-        child: Text('Go to exercize!'),
+        onPressed: () => Navigator.pushNamed(context, '/exercise'),
+        child: Text('Go to exercise!'),
       ),
     );
   }

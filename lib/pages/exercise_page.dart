@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:on_beat/services/accelerometer_service.dart';
 import 'package:on_beat/widgets/note_painter.dart';
@@ -55,7 +54,7 @@ class _ExercisePageState extends State<ExercisePage>
               child: SizedBox(
                 width: double.infinity,
                 height: 300,
-                child: CustomPaint(painter: NotePainter()),
+                child: CustomPaint(painter: NotePainter(noteType: 0)),
               ),
             ),
           ],

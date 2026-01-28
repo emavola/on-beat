@@ -6,6 +6,6 @@ import 'app_routes.dart';
 class AppRouter {
   static final routes = <String, WidgetBuilder>{
     AppRoutes.main: (context) => const MainPage(),
-    AppRoutes.exercize: (context) => ExercisePage(),
+    AppRoutes.exercise: (context) => ExercisePage(),
   };
 }

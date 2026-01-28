@@ -1,13 +1,13 @@
 class NoteModel {
-  final DurationType duration;
-  final bool isRest;
-  final DurationType nextNoteDuration;
+  final double duration;
+  final bool isNote;
+  final bool isDotted;
 
   NoteModel({
     required this.duration,
-    required this.isRest,
-    required this.nextNoteDuration,
+    required this.isNote,
+    this.isDotted = false,
   });
 }
 
-enum DurationType { whole, half, quarter, eighth }
+enum DurationType { whole, half, quarter, eighth, sixteenth }
