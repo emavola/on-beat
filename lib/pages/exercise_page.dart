@@ -1,40 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:on_beat/services/accelerometer_service.dart';
-import 'package:on_beat/widgets/note_painter.dart';
+
+import '../controllers/exercise_controller.dart';
+import '../services/accelerometer_service.dart';
 
 class ExercisePage extends StatefulWidget {
   const ExercisePage({super.key});
+
   @override
   State<ExercisePage> createState() => _ExercisePageState();
 }
 
-class _ExercisePageState extends State<ExercisePage>
-    with SingleTickerProviderStateMixin {
+class _ExercisePageState extends State<ExercisePage> {
+  late ExerciseController exerciseController;
   final AccelerometerService acc = AccelerometerService();
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  int _counter = 0;
 
   @override
   void initState() {
     super.initState();
-    acc.onHitDetected =
-        () => setState(() {
-          _counter++;
-        });
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: 5),
-    );
-    _animation = Tween<double>(begin: -1, end: 1).animate(_controller)
-      ..addListener(() {
-        setState(() {});
-      });
+
+    exerciseController = ExerciseController(mode: ExerciseMode.normal);
+
+    acc.onHitDetected = () {
+      final now = DateTime.now().millisecondsSinceEpoch.toDouble();
+      exerciseController.currentMeasureController?.onHit(now);
+    };
+  }
+
+  void _startExercise() {
+    final startTime = DateTime.now().millisecondsSinceEpoch.toDouble();
+
+    exerciseController.start(startTime);
+    acc.start();
+
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final measureController = exerciseController.currentMeasureController;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Esercizio Batteria'),
@@ -42,21 +46,42 @@ class _ExercisePageState extends State<ExercisePage>
       ),
       body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-              onPressed: () {
-                _controller.reset();
-                _controller.forward();
-              },
-              child: Text("Start"),
-            ),
-            Center(
-              child: SizedBox(
-                width: double.infinity,
-                height: 300,
-                child: CustomPaint(painter: NotePainter(noteType: 0)),
+            // VITE
+            if (exerciseController.mode == ExerciseMode.normal)
+              Text(
+                'Vite: ${exerciseController.lives}',
+                style: const TextStyle(fontSize: 20),
               ),
-            ),
+
+            const SizedBox(height: 24),
+
+            // START
+            if (!exerciseController.isRunning)
+              ElevatedButton(
+                onPressed: _startExercise,
+                child: const Text('Start'),
+              ),
+
+            // BATTUTA CORRENTE
+            if (measureController != null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children:
+                    measureController.measure.quarters
+                        .map(
+                          (q) => Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Image.asset(
+                              q.assetPath,
+                              width: 60,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                        .toList(),
+              ),
           ],
         ),
       ),
