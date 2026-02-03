@@ -1,14 +1,21 @@
 import '../models/measure_model.dart';
 import '../models/quarter_model.dart';
 
+import '../models/quarter_state.dart';
+
 class MeasureController {
   final MeasureModel measure;
 
   int currentQuarterIndex = 0;
   double? quarterStartTime;
   final List<double> currentHits = [];
+  final List<QuarterState> quarterStates;
 
-  MeasureController({required this.measure});
+  MeasureController({required this.measure})
+    : quarterStates = List.filled(
+        measure.quarters.length,
+        QuarterState.neutral,
+      );
 
   /// Inizia la battuta
   void startMeasure(double startTime) {

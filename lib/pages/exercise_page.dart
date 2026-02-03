@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/exercise_controller.dart';
 import '../services/accelerometer_service.dart';
+import '../widgets/quarter_tile.dart';
 
 class ExercisePage extends StatefulWidget {
   const ExercisePage({super.key});
@@ -66,22 +67,28 @@ class _ExercisePageState extends State<ExercisePage> {
 
             // BATTUTA CORRENTE
             if (measureController != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children:
-                    measureController.measure.quarters
-                        .map(
-                          (q) => Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Image.asset(
-                              q.assetPath,
-                              width: 60,
-                              color: Colors.white,
-                            ),
+              if (measureController != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    measureController.measure.quarters.length,
+                    (index) {
+                      final quarter = measureController.measure.quarters[index];
+                      final state = measureController.quarterStates[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: QuarterTile(
+                          state: state,
+                          child: Image.asset(
+                            quarter.assetPath,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
-                        )
-                        .toList(),
-              ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
           ],
         ),
       ),
