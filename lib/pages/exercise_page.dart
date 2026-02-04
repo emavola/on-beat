@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:on_beat/models/quarter_state.dart';
 
 import '../controllers/exercise_controller.dart';
 import '../services/accelerometer_service.dart';
@@ -67,28 +68,27 @@ class _ExercisePageState extends State<ExercisePage> {
 
             // BATTUTA CORRENTE
             if (measureController != null)
-              if (measureController != null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    measureController.measure.quarters.length,
-                    (index) {
-                      final quarter = measureController.measure.quarters[index];
-                      final state = measureController.quarterStates[index];
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  measureController.measure.quarters.length,
+                  (index) {
+                    final quarter = measureController.measure.quarters[index];
+                    final state = measureController.quarterStates[index];
 
-                      return Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: QuarterTile(
-                          state: state,
-                          child: Image.asset(
-                            quarter.assetPath,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                    return Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: QuarterTile(
+                        state: state,
+                        child: Image.asset(
+                          quarter.assetPath,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
+              ),
           ],
         ),
       ),
