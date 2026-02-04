@@ -38,8 +38,9 @@ class QuarterTile extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
-      width: 64,
-      height: 64,
+      width: 70,
+      height: 70,
+      padding: EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: _backgroundColor(context),
         borderRadius: BorderRadius.circular(12),
