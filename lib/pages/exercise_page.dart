@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:on_beat/models/quarter_state.dart';
 
 import '../controllers/exercise_controller.dart';
 import '../services/accelerometer_service.dart';

@@ -3,12 +3,14 @@ import 'dart:math';
 import '../models/measure_model.dart';
 import '../models/quarter_model.dart';
 import 'measure_controller.dart';
+import 'package:on_beat/services/metronome_service.dart';
 
 enum ExerciseMode { normal, zen }
 
 class ExerciseController {
   final ExerciseMode mode;
   final Random _random = Random();
+  final MetronomeService metronome = MetronomeService();
 
   static const int maxLives = 3;
 
@@ -51,7 +53,11 @@ class ExerciseController {
 
   void _startNewMeasure(double startTime) {
     final measure = _generateRandomMeasure();
-    currentMeasureController = MeasureController(measure: measure);
+    currentMeasureController = MeasureController(
+      measure: measure,
+      bpm: 100,
+      metronome: metronome,
+    );
     currentMeasureController!.startMeasure(startTime);
   }
 

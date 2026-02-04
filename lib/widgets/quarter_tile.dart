@@ -17,9 +17,11 @@ class QuarterTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     switch (state) {
-      case QuarterState.correct:
+      case QuarterState.perfect:
         return Colors.greenAccent.withValues(alpha: 0.8);
-      case QuarterState.wrong:
+      case QuarterState.ok:
+        return Colors.yellowAccent.withValues(alpha: 0.8);
+      case QuarterState.miss:
         return Colors.redAccent.withValues(alpha: 0.8);
       case QuarterState.neutral:
         return theme.colorScheme.surface;
