@@ -31,6 +31,8 @@ class MeasureController {
     quarterDurationMs = 60000 / bpm;
   }
 
+  void Function(List<QuarterState> states, double endTime)? onMeasureCompleted;
+
   /// Inizia la battuta
   void startMeasure(double startTimeMs) {
     startTime = startTimeMs;
@@ -74,6 +76,7 @@ class MeasureController {
       quarterStartTime = null;
       _timer?.cancel();
     }
+    onMeasureCompleted?.call(List.unmodifiable(quarterStates), endTime);
   }
 
   void _evaluateCurrentQuarter() {
