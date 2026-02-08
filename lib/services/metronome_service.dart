@@ -1,42 +1,47 @@
 import 'package:audioplayers/audioplayers.dart';
 
 class MetronomeService {
-  final AudioPlayer _strongPlayer = AudioPlayer();
-  final AudioPlayer _weakPlayer = AudioPlayer();
+  AudioPlayer? _strongPlayer;
+  AudioPlayer? _weakPlayer;
 
-  int _beatCounter = 0; // 0..3
+  int _tickIndex = 0;
   bool _initialized = false;
 
   Future<void> init() async {
     if (_initialized) return;
 
-    await _strongPlayer.setSource(AssetSource('sounds/click_strong.wav'));
-    await _weakPlayer.setSource(AssetSource('sounds/click_weak.wav'));
+    _strongPlayer = AudioPlayer();
+    await _strongPlayer!.setSource(AssetSource('sounds/click_strong.wav'));
+    await _strongPlayer!.setReleaseMode(ReleaseMode.stop);
+
+    _weakPlayer = AudioPlayer();
+    await _weakPlayer!.setSource(AssetSource('sounds/click_weak.wav'));
+    await _weakPlayer!.setReleaseMode(ReleaseMode.stop);
 
     _initialized = true;
   }
 
-  void reset() {
-    _beatCounter = 0;
-  }
-
-  /// Chiamare ad OGNI quarter deciso dal clock
   void play() {
     if (!_initialized) return;
 
-    if (_beatCounter == 0) {
-      _strongPlayer.stop();
-      _strongPlayer.resume();
+    if (_tickIndex == 0) {
+      _strongPlayer!.seek(Duration.zero);
+      _strongPlayer!.resume();
     } else {
-      _weakPlayer.stop();
-      _weakPlayer.resume();
+      _weakPlayer!.seek(Duration.zero);
+      _weakPlayer!.resume();
     }
 
-    _beatCounter = (_beatCounter + 1) % 4;
+    _tickIndex = (_tickIndex + 1) % 4;
+  }
+
+  void reset() {
+    _tickIndex = 0;
   }
 
   void dispose() {
-    _strongPlayer.dispose();
-    _weakPlayer.dispose();
+    _strongPlayer?.dispose();
+    _weakPlayer?.dispose();
+    _initialized = false;
   }
 }
