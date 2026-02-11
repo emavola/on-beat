@@ -31,6 +31,7 @@ class MeasureController {
     quarterDurationMs = 60000 / bpm;
   }
 
+  void Function(QuarterState state)? onQuarterCompleted;
   void Function(List<QuarterState> states, double endTime)? onMeasureCompleted;
 
   /// Inizia la battuta
@@ -42,7 +43,7 @@ class MeasureController {
     _startQuarter(startTimeMs);
     metronome.play(); // primo click
 
-    _timer = Timer.periodic(const Duration(milliseconds: 16), _tick);
+    _timer = Timer.periodic(const Duration(seconds: 1), _tick);
   }
 
   void _tick(Timer timer) {
@@ -54,6 +55,8 @@ class MeasureController {
     if (expectedQuarter > currentQuarterIndex && !isMeasureFinished) {
       nextQuarter(now);
       metronome.play();
+    } else {
+      onMeasureCompleted?.call(List.unmodifiable(quarterStates), now);
     }
   }
 
@@ -66,6 +69,7 @@ class MeasureController {
   /// Passa al prossimo quarter
   void nextQuarter(double endTime) {
     _evaluateCurrentQuarter();
+    onQuarterCompleted?.call(quarterStates[currentQuarterIndex]);
 
     currentQuarterIndex++;
     currentHits.clear();
@@ -76,7 +80,6 @@ class MeasureController {
       quarterStartTime = null;
       _timer?.cancel();
     }
-    onMeasureCompleted?.call(List.unmodifiable(quarterStates), endTime);
   }
 
   void _evaluateCurrentQuarter() {

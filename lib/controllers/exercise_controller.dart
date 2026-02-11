@@ -31,6 +31,7 @@ class ExerciseController {
   /// Ferma l'esercizio
   void stop() {
     currentMeasureController?.dispose();
+    metronome.dispose();
     currentMeasureController = null;
   }
 
@@ -56,23 +57,26 @@ class ExerciseController {
       _handleMeasureResult(states, endTime);
     };
 
+    controller.onQuarterCompleted = (state) {
+      _handleQuarterResult(state);
+    };
+
     currentMeasureController = controller;
     controller.startMeasure(startTime);
   }
 
   void _handleMeasureResult(List<QuarterState> states, double endTime) {
-    final bool success = !states.contains(QuarterState.miss);
-
-    if (!success && mode == ExerciseMode.normal) {
-      lives--;
-    }
-
-    if (mode == ExerciseMode.normal && lives <= 0) {
-      stop();
-      return;
-    }
-
     _startNewMeasure(endTime);
+  }
+
+  void _handleQuarterResult(QuarterState state) {
+    if (state == QuarterState.miss && mode == ExerciseMode.normal) {
+      lives--;
+
+      if (lives <= 0) {
+        stop();
+      }
+    }
   }
 
   MeasureModel _generateRandomMeasure() {
