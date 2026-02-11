@@ -154,7 +154,9 @@ class MeasureController extends ChangeNotifier {
     currentHits.clear();
   }
 
+  @override
   void dispose() {
+    super.dispose();
     _timer?.cancel();
   }
 }
