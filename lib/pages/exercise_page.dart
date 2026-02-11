@@ -27,12 +27,19 @@ class _ExercisePageState extends State<ExercisePage> {
     };
   }
 
-  void _startExercise() {
+  Future<void> _startExercise() async {
     final startTime = DateTime.now().millisecondsSinceEpoch.toDouble();
 
-    exerciseController.start(startTime);
+    await exerciseController.start(startTime);
     acc.start();
+    exerciseController.currentMeasureController?.addListener(
+      _onControllerChanged,
+    );
 
+    setState(() {});
+  }
+
+  void _onControllerChanged() {
     setState(() {});
   }
 
@@ -74,11 +81,14 @@ class _ExercisePageState extends State<ExercisePage> {
                   (index) {
                     final quarter = measureController.measure.quarters[index];
                     final state = measureController.quarterStates[index];
+                    final isActive =
+                        measureController.currentQuarterIndex == index;
 
                     return Padding(
                       padding: const EdgeInsets.all(10),
                       child: QuarterTile(
                         state: state,
+                        isActive: isActive,
                         child: Image.asset(
                           quarter.assetPath,
                           color: Theme.of(context).colorScheme.onSurface,

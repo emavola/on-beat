@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/measure_model.dart';
 import '../models/quarter_model.dart';
 import '../models/quarter_state.dart';
 import '../services/metronome_service.dart';
 
-class MeasureController {
+class MeasureController extends ChangeNotifier {
   final MeasureModel measure;
   final double bpm;
   final MetronomeService metronome;
@@ -73,6 +75,7 @@ class MeasureController {
 
     currentQuarterIndex++;
     currentHits.clear();
+    notifyListeners();
 
     if (currentQuarterIndex < measure.quarters.length) {
       _startQuarter(endTime);
