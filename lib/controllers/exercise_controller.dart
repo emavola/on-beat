@@ -1,4 +1,7 @@
+import 'dart:collection';
 import 'dart:math';
+
+import 'package:flutter/material.dart';
 
 import '../models/measure_model.dart';
 import '../models/quarter_model.dart';
@@ -8,10 +11,13 @@ import 'package:on_beat/models/quarter_state.dart';
 
 enum ExerciseMode { normal, zen }
 
-class ExerciseController {
+class ExerciseController extends ChangeNotifier {
   final ExerciseMode mode;
   final Random _random = Random();
   final MetronomeService metronome = MetronomeService();
+  Queue<MeasureModel> visibleMeasure = Queue();
+  bool isFisrtMeasure = true;
+  final int queueLength = 4;
 
   static const int maxLives = 3;
 
@@ -25,13 +31,14 @@ class ExerciseController {
   Future<void> start(double startTime) async {
     lives = mode == ExerciseMode.normal ? maxLives : -1;
     await metronome.init();
+    _initRandomMeasure();
     _startNewMeasure(startTime);
   }
 
   /// Ferma l'esercizio
   void stop() {
-    currentMeasureController?.dispose();
     metronome.dispose();
+    currentMeasureController?.dispose();
     currentMeasureController = null;
   }
 
@@ -42,7 +49,14 @@ class ExerciseController {
   // -------------------------
 
   void _startNewMeasure(double startTime) {
-    final measure = _generateRandomMeasure();
+    MeasureModel measure;
+    if (isFisrtMeasure) {
+      measure = visibleMeasure.first;
+    } else {
+      _addMeasure(_generateRandomMeasure());
+      measure = visibleMeasure.elementAt(1);
+    }
+    notifyListeners();
 
     final controller = MeasureController(
       measure: measure,
@@ -89,6 +103,17 @@ class ExerciseController {
           patterns[_random.nextInt(patterns.length)],
         ),
       ),
+    );
+  }
+
+  void _addMeasure(MeasureModel measure) {
+    visibleMeasure.removeFirst();
+    visibleMeasure.addLast(measure);
+  }
+
+  void _initRandomMeasure() {
+    visibleMeasure.addAll(
+      List.generate(queueLength, (_) => _generateRandomMeasure()),
     );
   }
 }
