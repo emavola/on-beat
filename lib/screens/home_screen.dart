@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../navigation/app_routes.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -6,9 +7,20 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ElevatedButton(
-        onPressed: () => Navigator.pushNamed(context, '/exercise'),
-        child: Text('Go to exercise!'),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.exercise),
+            child: const Text('Go to exercise!'),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.accelerometerTest),
+            child: const Text('Accelerometer test'),
+          ),
+        ],
       ),
     );
   }

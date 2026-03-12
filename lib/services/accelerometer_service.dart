@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class AccelerometerService {
@@ -14,71 +13,77 @@ class AccelerometerService {
   }
 
   static StreamSubscription<UserAccelerometerEvent>? _subscription;
-  static DateTime _lastHitTime = DateTime.now();
-  static final Duration _hitCooldown = Duration(milliseconds: 0);
-  static const double _treshold = 0.02;
+  static DateTime _lastHitTime = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _hitCooldown = Duration(milliseconds: 100);
+  static const double threshold = 0.9;
+
+  // Sliding window buffer for smoothing (size 7)
+  static final Queue<double> _avgBuffer = Queue();
+  static const int _bufferSize = 7;
+
+  static double _previousSmoothed = 0;
+  static const double _alphaLowPass = 0.2;
+
   void Function()? onHitDetected;
-  static List<double> magnitudesForChart = [0, 0];
-  static Queue<double> avgBuffer = Queue();
-  static double previousMagnitude = 0;
-  static const double alphaLowPass = 0.01;
+  void Function(double magnitude)? onMagnitudeUpdate;
+
+  // Public magnitudes for chart display
+  static List<double> magnitudesForChart = [];
 
   void start() {
-    avgBuffer.addAll([0, 0, 0, 0, 0, 0, 0]);
+    _avgBuffer.clear();
+    for (int i = 0; i < _bufferSize; i++) {
+      _avgBuffer.add(0);
+    }
+    _previousSmoothed = 0;
+    magnitudesForChart.clear();
     _subscription?.cancel();
-    _subscription = userAccelerometerEventStream().listen(_detectHit);
+    _subscription = userAccelerometerEventStream(
+      samplingPeriod: SensorInterval.fastestInterval,
+    ).listen(_detectHit);
   }
 
   void stop() {
     _subscription?.cancel();
+    _subscription = null;
   }
 
   void _detectHit(UserAccelerometerEvent event) {
     final now = DateTime.now();
-    double magnitude = sqrt(
-      event.x * event.x * 0 + event.y * event.y * 0 + event.z * event.z * 3,
-    );
 
-    // avg buffer to make the graph smoother
-    avgBuffer.removeLast();
-    avgBuffer.add(magnitude);
-    double avg = avgBuffer.reduce((a, b) => a + b) / avgBuffer.length;
-    // Low-pass filter
-    double smoothed =
-        alphaLowPass * previousMagnitude + (1 - alphaLowPass) * avg;
-    smoothed = smoothed >= 0.003 ? smoothed : 0;
+    // Only Z axis for vertical drum strike detection
+    final double magnitude = event.z.abs();
+
+    // Proper sliding window: remove oldest, add newest
+    _avgBuffer.removeFirst();
+    _avgBuffer.add(magnitude);
+    final double avg = _avgBuffer.reduce((a, b) => a + b) / _bufferSize;
+
+    // Low-pass filter: smooth the signal using previous smoothed value
+    final double smoothed =
+        _alphaLowPass * avg + (1 - _alphaLowPass) * _previousSmoothed;
+    _previousSmoothed = smoothed;
+
     magnitudesForChart.add(smoothed);
-    if (smoothed < 0) {
-      print("Minore di zero strunz");
-    }
     if (magnitudesForChart.length > 100) {
       magnitudesForChart.removeAt(0);
     }
 
-    //update every tick
-    onHitDetected?.call();
-    /* Previous shot detection with trashold
-    if (magnitude > _treshold && now.difference(_lastHitTime) > _hitCooldown) {
-      print('💥 Colpo rilevato!');
-      onHitDetected?.call();
-      _lastHitTime = now;
-    }*/
+    onMagnitudeUpdate?.call(magnitude);
 
-    List<double> dev = getDerivative();
-    if (dev.last > 0 && dev[dev.length - 2] <= 0) {
-      print('💥 Colpo rilevato!');
-      onHitDetected?.call();
+    // Threshold + cooldown on raw magnitude.
+    final bool cooledDown = now.difference(_lastHitTime) > _hitCooldown;
+    if (magnitude > threshold && cooledDown) {
       _lastHitTime = now;
+      print('💥 Hit detected! raw=${magnitude.toStringAsFixed(4)}');
+      onHitDetected?.call();
     }
-    previousMagnitude = magnitude;
   }
 
   List<double> getDerivative() {
-    List<double> slopes = [];
-
+    final List<double> slopes = [];
     for (int i = 1; i < magnitudesForChart.length; i++) {
-      double delta = magnitudesForChart[i] - magnitudesForChart[i - 1];
-      slopes.add(delta);
+      slopes.add(magnitudesForChart[i] - magnitudesForChart[i - 1]);
     }
     return slopes;
   }
