@@ -75,7 +75,6 @@ class AccelerometerService {
     final bool cooledDown = now.difference(_lastHitTime) > _hitCooldown;
     if (magnitude > threshold && cooledDown) {
       _lastHitTime = now;
-      print('💥 Hit detected! raw=${magnitude.toStringAsFixed(4)}');
       onHitDetected?.call();
     }
   }

@@ -100,12 +100,19 @@ class MeasureController extends ChangeNotifier {
     final quarter = currentQuarter;
     if (quarter == null || quarterStartTime == null) return;
 
-    const double perfectWindow = 40.0;
-    const double okWindow = 80.0;
+    const double perfectWindow = 80.0;
+    const double okWindow = 160.0;
+
+    // Compensate for audio output latency: the user hears the metronome click
+    // this many ms after the internal beat timestamp, so their hit arrives late.
+    const double audioLatencyMs = 150.0;
 
     final List<double> expectedTimes =
         quarter.expectedHits
-            .map((fraction) => quarterStartTime! + fraction * quarterDurationMs)
+            .map((fraction) =>
+                quarterStartTime! +
+                fraction * quarterDurationMs +
+                audioLatencyMs)
             .toList();
 
     int matchedPerfect = 0;
@@ -138,9 +145,12 @@ class MeasureController extends ChangeNotifier {
     }
 
     final totalExpected = expectedTimes.length;
+    final bool hasExtraHits = remainingHits.isNotEmpty;
 
     QuarterState result;
-    if (matchedPerfect == totalExpected) {
+    if (hasExtraHits) {
+      result = QuarterState.miss;
+    } else if (matchedPerfect == totalExpected) {
       result = QuarterState.perfect;
     } else if (matchedPerfect + matchedOk == totalExpected) {
       result = QuarterState.ok;

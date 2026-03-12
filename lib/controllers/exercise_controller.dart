@@ -68,7 +68,6 @@ class ExerciseController extends ChangeNotifier {
   // -------------------------
 
   void _startNewMeasure(double startTime, {bool startTiming = true}) {
-    print("_startNewMeasure");
 
     currentMeasureController?.removeListener(notifyListeners);
     currentMeasureController?.dispose();
@@ -84,7 +83,7 @@ class ExerciseController extends ChangeNotifier {
 
     final controller = MeasureController(
       measure: measure,
-      bpm: 100,
+      bpm: 60,
       metronome: metronome,
     );
 
@@ -92,7 +91,6 @@ class ExerciseController extends ChangeNotifier {
       List<QuarterState> states,
       double endTime,
     ) {
-      print("Callback exercise - measure completed");
       _handleMeasureResult(states, endTime);
     };
 

@@ -37,6 +37,7 @@ class _ExercisePageState extends State<ExercisePage>
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
 
+
   @override
   void initState() {
     super.initState();
@@ -133,6 +134,7 @@ class _ExercisePageState extends State<ExercisePage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+
             if (exerciseController.mode == ExerciseMode.normal)
               Text(
                 'Vite: ${exerciseController.lives}',
