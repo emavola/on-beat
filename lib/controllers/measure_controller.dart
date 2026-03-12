@@ -15,6 +15,8 @@ class MeasureController extends ChangeNotifier {
   late final double quarterDurationMs;
   Timer? _timer;
 
+  bool _isDisposed = false;
+
   int currentQuarterIndex = 0;
   double? startTime;
   double? quarterStartTime;
@@ -83,7 +85,7 @@ class MeasureController extends ChangeNotifier {
 
     currentQuarterIndex++;
     currentHits.clear();
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     if (currentQuarterIndex < measure.quarters.length) {
       _startQuarter(endTime);
@@ -165,7 +167,8 @@ class MeasureController extends ChangeNotifier {
 
   @override
   void dispose() {
-    super.dispose();
+    _isDisposed = true;
     _timer?.cancel();
+    super.dispose();
   }
 }

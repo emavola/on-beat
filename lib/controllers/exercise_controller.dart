@@ -31,6 +31,8 @@ class ExerciseController extends ChangeNotifier {
   /// Chiamare [beginTiming] dopo che il primo frame è stato renderizzato.
   Future<void> start() async {
     lives = mode == ExerciseMode.normal ? maxLives : -1;
+    visibleMeasure.clear();
+    isFisrtMeasure = true;
     await metronome.init();
     _initRandomMeasure();
     _startNewMeasure(0, startTiming: false);
@@ -50,16 +52,12 @@ class ExerciseController extends ChangeNotifier {
     currentMeasureController?.removeListener(notifyListeners);
     currentMeasureController?.dispose();
     currentMeasureController = null;
+    notifyListeners();
   }
 
   bool get isRunning => currentMeasureController != null;
 
-  MeasureModel getCurrentMeasure() {
-    isFisrtMeasure
-        ? print(visibleMeasure.first.hashCode)
-        : print(visibleMeasure.elementAt(1).hashCode);
-    return isFisrtMeasure ? visibleMeasure.first : visibleMeasure.elementAt(1);
-  }
+  MeasureModel getCurrentMeasure() => visibleMeasure.first;
 
   // -------------------------
   // PRIVATE
@@ -72,13 +70,13 @@ class ExerciseController extends ChangeNotifier {
     currentMeasureController?.dispose();
     currentMeasureController = null;
 
-    MeasureModel measure;
     if (isFisrtMeasure) {
-      measure = visibleMeasure.first;
+      isFisrtMeasure = false;
     } else {
       _addMeasure(_generateRandomMeasure());
-      measure = visibleMeasure.elementAt(1);
     }
+
+    final measure = visibleMeasure.first;
 
     final controller = MeasureController(
       measure: measure,
@@ -108,16 +106,16 @@ class ExerciseController extends ChangeNotifier {
   }
 
   void _handleMeasureResult(List<QuarterState> states, double endTime) {
+    if (mode == ExerciseMode.normal && lives <= 0) {
+      stop();
+      return;
+    }
     _startNewMeasure(endTime);
   }
 
   void _handleQuarterResult(QuarterState state) {
     if (state == QuarterState.miss && mode == ExerciseMode.normal) {
       lives--;
-
-      if (lives <= 0) {
-        stop();
-      }
     }
   }
 
