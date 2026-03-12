@@ -20,6 +20,7 @@ class _ExercisePageState extends State<ExercisePage> {
     super.initState();
 
     exerciseController = ExerciseController(mode: ExerciseMode.normal);
+    exerciseController.addListener(_onControllerChanged);
 
     acc.onHitDetected = () {
       final now = DateTime.now().millisecondsSinceEpoch.toDouble();
@@ -28,15 +29,13 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   Future<void> _startExercise() async {
-    final startTime = DateTime.now().millisecondsSinceEpoch.toDouble();
-
-    await exerciseController.start(startTime);
+    await exerciseController.start();
     acc.start();
-    exerciseController.currentMeasureController?.addListener(
-      _onControllerChanged,
-    );
-
-    setState(() {});
+    // Wait for the first frame to render before starting the timer,
+    // so the UI rebuild doesn't block the event loop during beat 1.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      exerciseController.beginTiming();
+    });
   }
 
   void _onControllerChanged() {
@@ -73,29 +72,76 @@ class _ExercisePageState extends State<ExercisePage> {
               ),
 
             // BATTUTA CORRENTE
-            if (measureController != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  measureController.measure.quarters.length,
-                  (index) {
-                    final quarter = measureController.measure.quarters[index];
-                    final state = measureController.quarterStates[index];
-                    final isActive =
-                        measureController.currentQuarterIndex == index;
+            // if (true && measureController != null)
+            //   Row(
+            //     mainAxisAlignment: MainAxisAlignment.center,
+            //     children: List.generate(
+            //       measureController.measure.quarters.length,
+            //       (index) {
+            //         final quarter = measureController.measure.quarters[index];
+            //         final state = measureController.quarterStates[index];
+            //         final isActive =
+            //             measureController.currentQuarterIndex == index;
 
-                    return Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: QuarterTile(
-                        state: state,
-                        isActive: isActive,
-                        child: Image.asset(
-                          quarter.assetPath,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    );
-                  },
+            //         return Padding(
+            //           padding: const EdgeInsets.all(10),
+            //           child: QuarterTile(
+            //             state: state,
+            //             isActive: isActive,
+            //             child: Image.asset(
+            //               quarter.assetPath,
+            //               color: Theme.of(context).colorScheme.onSurface,
+            //             ),
+            //           ),
+            //         );
+            //       },
+            //     ),
+            //   ),
+            if (measureController != null)
+              AnimatedSwitcher(
+                duration: Duration(milliseconds: 400),
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(0, 0.3),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Column(
+                  key: ValueKey(
+                    exerciseController.getCurrentMeasure().hashCode,
+                  ),
+                  children:
+                      exerciseController.visibleMeasure.map((m) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(m.quarters.length, (index) {
+                            final quarter = m.quarters[index];
+                            final state =
+                                measureController.quarterStates[index];
+                            final isActive =
+                                measureController.currentQuarterIndex == index;
+
+                            return Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: QuarterTile(
+                                state: state,
+                                isActive: isActive,
+                                child: Image.asset(
+                                  quarter.assetPath,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                            );
+                          }),
+                        );
+                      }).toList(),
                 ),
               ),
           ],
@@ -106,6 +152,8 @@ class _ExercisePageState extends State<ExercisePage> {
 
   @override
   void dispose() {
+    exerciseController.removeListener(_onControllerChanged);
+    exerciseController.dispose();
     acc.stop();
     super.dispose();
   }

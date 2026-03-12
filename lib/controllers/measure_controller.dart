@@ -45,20 +45,28 @@ class MeasureController extends ChangeNotifier {
     _startQuarter(startTimeMs);
     metronome.play(); // primo click
 
-    _timer = Timer.periodic(const Duration(seconds: 1), _tick);
+    _scheduleNextQuarter();
   }
 
-  void _tick(Timer timer) {
+  void _scheduleNextQuarter() {
+    final nextBoundary =
+        startTime! + (currentQuarterIndex + 1) * quarterDurationMs;
     final now = DateTime.now().millisecondsSinceEpoch.toDouble();
-    final elapsed = now - startTime!;
+    final delayMs = (nextBoundary - now).clamp(0.0, quarterDurationMs);
 
-    final expectedQuarter = (elapsed / quarterDurationMs).floor();
+    _timer?.cancel();
+    _timer = Timer(
+      Duration(milliseconds: delayMs.round()),
+      _onQuarterBoundary,
+    );
+  }
 
-    if (expectedQuarter > currentQuarterIndex && !isMeasureFinished) {
-      nextQuarter(now);
+  void _onQuarterBoundary() {
+    final now = DateTime.now().millisecondsSinceEpoch.toDouble();
+    nextQuarter(now);
+    if (!isMeasureFinished) {
       metronome.play();
-    } else {
-      onMeasureCompleted?.call(List.unmodifiable(quarterStates), now);
+      _scheduleNextQuarter();
     }
   }
 
@@ -82,6 +90,7 @@ class MeasureController extends ChangeNotifier {
     } else {
       quarterStartTime = null;
       _timer?.cancel();
+      onMeasureCompleted?.call(List.unmodifiable(quarterStates), endTime);
     }
   }
 

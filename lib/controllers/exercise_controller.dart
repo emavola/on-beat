@@ -19,7 +19,7 @@ class ExerciseController extends ChangeNotifier {
   bool isFisrtMeasure = true;
   final int queueLength = 4;
 
-  static const int maxLives = 3;
+  static const int maxLives = 10;
 
   int lives;
   MeasureController? currentMeasureController;
@@ -27,28 +27,51 @@ class ExerciseController extends ChangeNotifier {
   ExerciseController({required this.mode})
     : lives = mode == ExerciseMode.normal ? maxLives : -1;
 
-  /// Avvia l'esercizio
-  Future<void> start(double startTime) async {
+  /// Avvia l'esercizio — prepara il controller ma non avvia il timer.
+  /// Chiamare [beginTiming] dopo che il primo frame è stato renderizzato.
+  Future<void> start() async {
     lives = mode == ExerciseMode.normal ? maxLives : -1;
     await metronome.init();
     _initRandomMeasure();
-    _startNewMeasure(startTime);
+    _startNewMeasure(0, startTiming: false);
+  }
+
+  /// Avvia effettivamente il timer e il primo click del metronomo.
+  /// Va chiamato dopo [start], una volta che la UI è stata renderizzata.
+  void beginTiming() {
+    final startTime = DateTime.now().millisecondsSinceEpoch.toDouble();
+    currentMeasureController?.startMeasure(startTime);
   }
 
   /// Ferma l'esercizio
   void stop() {
+    print("[exercise controller] - stop");
     metronome.dispose();
+    currentMeasureController?.removeListener(notifyListeners);
     currentMeasureController?.dispose();
     currentMeasureController = null;
   }
 
   bool get isRunning => currentMeasureController != null;
 
+  MeasureModel getCurrentMeasure() {
+    isFisrtMeasure
+        ? print(visibleMeasure.first.hashCode)
+        : print(visibleMeasure.elementAt(1).hashCode);
+    return isFisrtMeasure ? visibleMeasure.first : visibleMeasure.elementAt(1);
+  }
+
   // -------------------------
   // PRIVATE
   // -------------------------
 
-  void _startNewMeasure(double startTime) {
+  void _startNewMeasure(double startTime, {bool startTiming = true}) {
+    print("_startNewMeasure");
+
+    currentMeasureController?.removeListener(notifyListeners);
+    currentMeasureController?.dispose();
+    currentMeasureController = null;
+
     MeasureModel measure;
     if (isFisrtMeasure) {
       measure = visibleMeasure.first;
@@ -56,7 +79,6 @@ class ExerciseController extends ChangeNotifier {
       _addMeasure(_generateRandomMeasure());
       measure = visibleMeasure.elementAt(1);
     }
-    notifyListeners();
 
     final controller = MeasureController(
       measure: measure,
@@ -68,6 +90,7 @@ class ExerciseController extends ChangeNotifier {
       List<QuarterState> states,
       double endTime,
     ) {
+      print("Callback exercise - measure completed");
       _handleMeasureResult(states, endTime);
     };
 
@@ -76,7 +99,12 @@ class ExerciseController extends ChangeNotifier {
     };
 
     currentMeasureController = controller;
-    controller.startMeasure(startTime);
+    controller.addListener(notifyListeners);
+    notifyListeners();
+
+    if (startTiming) {
+      controller.startMeasure(startTime);
+    }
   }
 
   void _handleMeasureResult(List<QuarterState> states, double endTime) {
