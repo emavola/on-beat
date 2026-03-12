@@ -24,6 +24,10 @@ class ExerciseController extends ChangeNotifier {
   int lives;
   MeasureController? currentMeasureController;
 
+  /// Snapshot of the last completed measure's quarter states.
+  /// Set before [_startNewMeasure] so the UI can capture it at transition time.
+  List<QuarterState>? lastCompletedStates;
+
   ExerciseController({required this.mode})
     : lives = mode == ExerciseMode.normal ? maxLives : -1;
 
@@ -110,6 +114,7 @@ class ExerciseController extends ChangeNotifier {
       stop();
       return;
     }
+    lastCompletedStates = List.unmodifiable(states);
     _startNewMeasure(endTime);
   }
 

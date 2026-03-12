@@ -30,6 +30,10 @@ class _ExercisePageState extends State<ExercisePage>
   // null = empty played slot (no previous measure yet)
   List<MeasureModel?> _animatedQueue = [];
 
+  // Parallel to _animatedQueue: evaluated states snapshot for each slot.
+  // null means no evaluated states (neutral display).
+  List<List<QuarterState>?> _queueStates = [];
+
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
 
@@ -55,6 +59,7 @@ class _ExercisePageState extends State<ExercisePage>
         _slideController.reset();
         setState(() {
           _animatedQueue = _animatedQueue.sublist(1);
+          _queueStates = _queueStates.sublist(1);
         });
       }
     });
@@ -67,6 +72,7 @@ class _ExercisePageState extends State<ExercisePage>
 
   Future<void> _startExercise() async {
     _animatedQueue = [];
+    _queueStates = [];
     _slideController.stop();
     _slideController.reset();
     await exerciseController.start();
@@ -85,11 +91,20 @@ class _ExercisePageState extends State<ExercisePage>
           null,
           ...exerciseController.visibleMeasure.take(3),
         ];
+        _queueStates = [null, null, null, null];
       } else if (_animatedQueue.length >= 2 &&
           _animatedQueue.elementAt(1) != mc.measure &&
           _slideController.value == 0.0) {
-        // Measure advanced — add the item that was off-screen below (index 2
-        // of the new visibleMeasure) and slide the whole column up by one slot.
+        // Measure advanced — capture evaluated states for the measure leaving
+        // slot 1, add the entering item, then slide the column up.
+        final states = exerciseController.lastCompletedStates;
+        _queueStates = [
+          ..._queueStates,
+          null, // entering slot has no evaluated states yet
+        ];
+        if (states != null) {
+          _queueStates[1] = states;
+        }
         final entering = exerciseController.visibleMeasure.elementAt(2);
         _animatedQueue = [..._animatedQueue, entering];
         _slideController.forward(from: 0.0);
@@ -164,10 +179,13 @@ class _ExercisePageState extends State<ExercisePage>
                                         final isCurrent =
                                             m == measureController.measure;
                                         final quarter = m.quarters[index];
+                                        final slotStates = _queueStates[i];
                                         final state = isCurrent
                                             ? measureController
                                                 .quarterStates[index]
-                                            : QuarterState.neutral;
+                                            : slotStates != null
+                                                ? slotStates[index]
+                                                : QuarterState.neutral;
                                         final isActive =
                                             isCurrent &&
                                             measureController
@@ -177,6 +195,7 @@ class _ExercisePageState extends State<ExercisePage>
                                         return Padding(
                                           padding: const EdgeInsets.all(10),
                                           child: QuarterTile(
+                                            key: ObjectKey((m, index)),
                                             state: state,
                                             isActive: isActive,
                                             child: Image.asset(
