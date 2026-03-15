@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/microphone_service.dart';
+import '../services/metronome_service.dart';
 
 class MicrophoneTestPage extends StatefulWidget {
   const MicrophoneTestPage({super.key});
@@ -13,6 +14,7 @@ class MicrophoneTestPage extends StatefulWidget {
 
 class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
   final MicrophoneService mic = MicrophoneService();
+  final MetronomeService _metronome = MetronomeService();
 
   int _hitCount = 0;
   bool _flash = false;
@@ -21,12 +23,40 @@ class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
   double _currentMag = 0;
   double _peakMag = 0;
 
+  bool _metronomeRunning = false;
+  int _bpm = 80;
+  Timer? _metronomeTimer;
+
   @override
   void initState() {
     super.initState();
     mic.onHitDetected = _onHit;
     mic.onMagnitudeUpdate = _onMagnitude;
     mic.start();
+    _metronome.init();
+  }
+
+  void _changeBpm(int newBpm) {
+    setState(() => _bpm = newBpm);
+    if (_metronomeRunning) {
+      _metronomeTimer?.cancel();
+      final interval = Duration(milliseconds: (60000 / _bpm).round());
+      _metronome.reset();
+      _metronomeTimer = Timer.periodic(interval, (_) => _metronome.play());
+    }
+  }
+
+  void _toggleMetronome() {
+    if (_metronomeRunning) {
+      _metronomeTimer?.cancel();
+      _metronomeTimer = null;
+      setState(() => _metronomeRunning = false);
+    } else {
+      final interval = Duration(milliseconds: (60000 / _bpm).round());
+      _metronome.reset();
+      _metronomeTimer = Timer.periodic(interval, (_) => _metronome.play());
+      setState(() => _metronomeRunning = true);
+    }
   }
 
   void _onHit(double _) {
@@ -92,6 +122,27 @@ class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
               color: Colors.orangeAccent,
             ),
             const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove),
+                  onPressed: _bpm > 40 ? () => _changeBpm(_bpm - 5) : null,
+                ),
+                Text('$_bpm BPM', style: const TextStyle(fontSize: 18)),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _bpm < 240 ? () => _changeBpm(_bpm + 5) : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _toggleMetronome,
+              icon: Icon(_metronomeRunning ? Icons.stop : Icons.play_arrow),
+              label: Text(_metronomeRunning ? 'Stop' : 'Metronome'),
+            ),
+            const SizedBox(height: 16),
             TextButton(
               onPressed: () => setState(() {
                 _hitCount = 0;
@@ -108,6 +159,8 @@ class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
   @override
   void dispose() {
     _flashTimer?.cancel();
+    _metronomeTimer?.cancel();
+    _metronome.dispose();
     mic.onHitDetected = null;
     mic.onMagnitudeUpdate = null;
     mic.stop();
