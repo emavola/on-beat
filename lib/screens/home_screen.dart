@@ -38,7 +38,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
             selected: {_selectedSensor},
-            onSelectionChanged: (s) => setState(() => _selectedSensor = s.first),
+            onSelectionChanged: (s) {
+              setState(() => _selectedSensor = s.first);
+              if (s.first == SensorType.microphone || s.first == SensorType.mixed) {
+                // TODO: replace with proper headphone detection (AudioManager.isWiredHeadsetOn
+                // or AudioDeviceCallback for Bluetooth) once UI is defined.
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Use headphones — speaker metronome will be picked up by the mic.'),
+                    duration: Duration(seconds: 4),
+                  ),
+                );
+              }
+            },
           ),
           const SizedBox(height: 24),
           ElevatedButton(
