@@ -6,10 +6,20 @@ import '../controllers/exercise_controller.dart';
 import '../models/measure_model.dart';
 import '../models/quarter_state.dart';
 import '../services/accelerometer_service.dart';
+import '../services/microphone_service.dart';
+import '../services/mixed_sensor.dart';
+import '../services/hit_sensor.dart';
 import '../widgets/quarter_tile.dart';
 
+HitSensor _sensorForType(SensorType type) => switch (type) {
+      SensorType.accelerometer => AccelerometerService(),
+      SensorType.microphone => MicrophoneService(),
+      SensorType.mixed => MixedSensor(),
+    };
+
 class ExercisePage extends StatefulWidget {
-  const ExercisePage({super.key});
+  final SensorType sensorType;
+  const ExercisePage({super.key, this.sensorType = SensorType.accelerometer});
 
   @override
   State<ExercisePage> createState() => _ExercisePageState();
@@ -18,7 +28,7 @@ class ExercisePage extends StatefulWidget {
 class _ExercisePageState extends State<ExercisePage>
     with SingleTickerProviderStateMixin {
   late ExerciseController exerciseController;
-  final AccelerometerService acc = AccelerometerService();
+  late final HitSensor _sensor;
 
   // QuarterTile 70px + Padding(all(10)) = 90px per row.
   // 4 visible slots: [played|empty, current, next, next+1]
@@ -42,6 +52,7 @@ class _ExercisePageState extends State<ExercisePage>
   void initState() {
     super.initState();
 
+    _sensor = _sensorForType(widget.sensorType);
     exerciseController = ExerciseController(mode: ExerciseMode.normal);
     exerciseController.addListener(_onControllerChanged);
 
@@ -65,9 +76,8 @@ class _ExercisePageState extends State<ExercisePage>
       }
     });
 
-    acc.onHitDetected = () {
-      final now = DateTime.now().millisecondsSinceEpoch.toDouble();
-      exerciseController.currentMeasureController?.onHit(now);
+    _sensor.onHitDetected = (double timestampMs) {
+      exerciseController.currentMeasureController?.onHit(timestampMs);
     };
   }
 
@@ -77,7 +87,7 @@ class _ExercisePageState extends State<ExercisePage>
     _slideController.stop();
     _slideController.reset();
     await exerciseController.start();
-    acc.start();
+    _sensor.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       exerciseController.beginTiming();
     });
@@ -229,7 +239,7 @@ class _ExercisePageState extends State<ExercisePage>
     _slideController.dispose();
     exerciseController.removeListener(_onControllerChanged);
     exerciseController.dispose();
-    acc.stop();
+    _sensor.stop();
     super.dispose();
   }
 }

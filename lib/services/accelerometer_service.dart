@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'hit_sensor.dart';
 
-class AccelerometerService {
+class AccelerometerService implements HitSensor {
   static final AccelerometerService _instance =
       AccelerometerService._internal();
 
@@ -24,13 +25,16 @@ class AccelerometerService {
   static double _previousSmoothed = 0;
   static const double _alphaLowPass = 0.2;
 
-  void Function()? onHitDetected;
+  @override
+  void Function(double timestampMs)? onHitDetected;
+  @override
   void Function(double magnitude)? onMagnitudeUpdate;
 
   // Public magnitudes for chart display
   static List<double> magnitudesForChart = [];
 
-  void start() {
+  @override
+  Future<void> start() async {
     _avgBuffer.clear();
     for (int i = 0; i < _bufferSize; i++) {
       _avgBuffer.add(0);
@@ -43,6 +47,7 @@ class AccelerometerService {
     ).listen(_detectHit);
   }
 
+  @override
   void stop() {
     _subscription?.cancel();
     _subscription = null;
@@ -75,7 +80,7 @@ class AccelerometerService {
     final bool cooledDown = now.difference(_lastHitTime) > _hitCooldown;
     if (magnitude > threshold && cooledDown) {
       _lastHitTime = now;
-      onHitDetected?.call();
+      onHitDetected?.call(now.millisecondsSinceEpoch.toDouble());
     }
   }
 
@@ -87,5 +92,6 @@ class AccelerometerService {
     return slopes;
   }
 
+  @override
   bool isRunning() => _subscription != null;
 }

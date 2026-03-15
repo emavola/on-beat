@@ -2,17 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../services/accelerometer_service.dart';
+import '../services/microphone_service.dart';
 
-class AccelerometerTestPage extends StatefulWidget {
-  const AccelerometerTestPage({super.key});
+class MicrophoneTestPage extends StatefulWidget {
+  const MicrophoneTestPage({super.key});
 
   @override
-  State<AccelerometerTestPage> createState() => _AccelerometerTestPageState();
+  State<MicrophoneTestPage> createState() => _MicrophoneTestPageState();
 }
 
-class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
-  final AccelerometerService acc = AccelerometerService();
+class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
+  final MicrophoneService mic = MicrophoneService();
 
   int _hitCount = 0;
   bool _flash = false;
@@ -24,9 +24,9 @@ class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
   @override
   void initState() {
     super.initState();
-    acc.onHitDetected = _onHit;
-    acc.onMagnitudeUpdate = _onMagnitude;
-    acc.start();
+    mic.onHitDetected = _onHit;
+    mic.onMagnitudeUpdate = _onMagnitude;
+    mic.start();
   }
 
   void _onHit(double _) {
@@ -52,7 +52,7 @@ class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Accelerometer Test')),
+      appBar: AppBar(title: const Text('Microphone Test')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -63,11 +63,11 @@ class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _flash ? Colors.greenAccent : Colors.grey.shade800,
+                color: _flash ? Colors.blueAccent : Colors.grey.shade800,
                 boxShadow: _flash
                     ? [
                         BoxShadow(
-                          color: Colors.greenAccent.withValues(alpha: 0.6),
+                          color: Colors.blueAccent.withValues(alpha: 0.6),
                           blurRadius: 30,
                           spreadRadius: 10,
                         ),
@@ -88,21 +88,16 @@ class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
             const SizedBox(height: 8),
             _InfoRow(
               label: 'threshold',
-              value: AccelerometerService.threshold,
+              value: 0.15, // matches AudioHitDetector.THRESHOLD in Kotlin
               color: Colors.orangeAccent,
             ),
             const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () => setState(() {
-                    _hitCount = 0;
-                    _peakMag = 0;
-                  }),
-                  child: const Text('Reset'),
-                ),
-              ],
+            TextButton(
+              onPressed: () => setState(() {
+                _hitCount = 0;
+                _peakMag = 0;
+              }),
+              child: const Text('Reset'),
             ),
           ],
         ),
@@ -113,9 +108,9 @@ class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
   @override
   void dispose() {
     _flashTimer?.cancel();
-    acc.onHitDetected = null;
-    acc.onMagnitudeUpdate = null;
-    acc.stop();
+    mic.onHitDetected = null;
+    mic.onMagnitudeUpdate = null;
+    mic.stop();
     super.dispose();
   }
 }
