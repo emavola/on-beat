@@ -11,8 +11,21 @@ import 'package:on_beat/models/quarter_state.dart';
 
 enum ExerciseMode { normal, zen }
 
+enum ExerciseDifficulty {
+  easy,
+  medium,
+  hard;
+
+  List<int> get patterns => switch (this) {
+        ExerciseDifficulty.easy => const [8, 10, 12, 15],
+        ExerciseDifficulty.medium => const [8, 10, 12, 15, 0, 9, 13, 14, 11, 7],
+        ExerciseDifficulty.hard => const [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      };
+}
+
 class ExerciseController extends ChangeNotifier {
   final ExerciseMode mode;
+  final ExerciseDifficulty difficulty;
   final Random _random = Random();
   final MetronomeService metronome = MetronomeService();
   Queue<MeasureModel> visibleMeasure = Queue();
@@ -28,8 +41,10 @@ class ExerciseController extends ChangeNotifier {
   /// Set before [_startNewMeasure] so the UI can capture it at transition time.
   List<QuarterState>? lastCompletedStates;
 
-  ExerciseController({required this.mode})
-    : lives = mode == ExerciseMode.normal ? maxLives : -1;
+  ExerciseController({
+    required this.mode,
+    this.difficulty = ExerciseDifficulty.easy,
+  }) : lives = mode == ExerciseMode.normal ? maxLives : -1;
 
   /// Avvia l'esercizio — prepara il controller ma non avvia il timer.
   /// Chiamare [beginTiming] dopo che il primo frame è stato renderizzato.
@@ -123,8 +138,7 @@ class ExerciseController extends ChangeNotifier {
   }
 
   MeasureModel _generateRandomMeasure() {
-    const patterns = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-
+    final patterns = difficulty.patterns;
     return MeasureModel(
       List.generate(
         4,

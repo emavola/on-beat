@@ -1,0 +1,84 @@
+ON BEAT — GAME MODES & FEATURES NOTES
+======================================
+
+DIFFICULTY LEVELS (separate axis from mode)
+--------------------------------------------
+Applied to pattern pool in _generateRandomMeasure().
+
+  EASY   → [8, 10, 12, 15]
+             8  = 1000 = single hit on beat 1 (downbeat)
+             10 = 1010 = hits on beat 1 and 3 (straight 8th feel)
+             12 = 1100 = hits on beat 1 and 2 (two consecutive 16ths)
+             15 = 1111 = all four 16ths (straight 16ths)
+             → clear, on-beat patterns, no syncopation
+
+  MEDIUM → [8, 10, 12, 15, 0, 9, 13, 14, 11, 7]
+             0  = terzina (triplet: hits at 0, 1/3, 2/3)
+             9  = 1001 = hits on beat 1 and 4 (starts syncopating)
+             13 = 1101 = hits on 1, 2, 4
+             14 = 1110 = hits on 1, 2, 3
+             11 = 1011 = hits on 1, 3, 4
+             7  = 0111 = hits on 2, 3, 4
+             → adds triplet feel and mild syncopation
+
+  HARD   → all patterns [0..15]
+             adds fully syncopated patterns:
+             1  = 0001 = hit on beat 4 only
+             2  = 0010 = hit on beat 3 only
+             3  = 0011 = hits on 3 and 4
+             4  = 0100 = hit on beat 2 only
+             5  = 0101 = hits on 2 and 4 (very syncopated)
+             6  = 0110 = hits on 2 and 3
+             → every possible 16th note combination
+
+
+GAME MODES
+----------
+
+  NORMAL (implemented)
+    - Fixed lives (currently 10)
+    - Fixed BPM (currently 60)
+    - Fixed difficulty
+    - Ends when lives reach 0
+
+  ZEN (implemented)
+    - Infinite lives
+    - Fixed BPM
+    - No pressure, just practice
+
+  INCREMENTAL (TODO)
+    - Starts at a low BPM (e.g. 60)
+    - BPM increases every N measures (e.g. every 4 measures, +5 BPM)
+    - Ends when the student can no longer keep up (e.g. 3 misses in a row)
+      or when a max BPM cap is reached
+    - Great for speed training (classic technique building method)
+    - Could show a "max BPM reached" result at the end
+
+  SURVIVAL (TODO)
+    - Starts with 3 lives
+    - Every miss costs a life
+    - Every perfect STREAK (e.g. 4 consecutive perfects) gives one back
+    - Gets progressively harder as score increases (ramp up patterns/BPM)
+    - Ends when lives reach 0
+
+  CHALLENGE (TODO)
+    - Fixed number of measures (e.g. 16 or 32)
+    - Scored at the end: % of perfect/ok/miss quarters
+    - Shareable result (score, BPM, difficulty)
+    - No lives — just play through and see your score
+    - Good for benchmarking progress over time
+
+
+OTHER TODOs
+-----------
+  - Proper headphone detection when mic/mixed sensor is selected
+    (AudioManager.isWiredHeadsetOn or AudioDeviceCallback for Bluetooth)
+    currently just shows a static SnackBar warning — see home_screen.dart TODO
+
+  - UI design pass (everything is placeholder layout right now)
+
+  - BPM selector on exercise start screen
+
+  - Difficulty selector on exercise start screen
+
+  - Velocity/dynamics feedback using accelerometer magnitude at hit time
