@@ -46,27 +46,31 @@ GAME MODES
     - Fixed BPM
     - No pressure, just practice
 
-  INCREMENTAL (TODO)
-    - Starts at a low BPM (e.g. 60)
-    - BPM increases every N measures (e.g. every 4 measures, +5 BPM)
-    - Ends when the student can no longer keep up (e.g. 3 misses in a row)
-      or when a max BPM cap is reached
-    - Great for speed training (classic technique building method)
-    - Could show a "max BPM reached" result at the end
+  INCREMENTAL (implemented, NOT TESTED)
+    - Starts at startBpm (default 60), configurable via constructor
+    - BPM increases +5 every 4 measures (_bpmStep, _measuresPerStep constants)
+    - Ends on 3 consecutive quarter misses (_maxConsecutiveMisses = 3)
+      or when _maxBpm (200) is reached → maxBpmReached = true
+    - UI should show current BPM (ExerciseController.currentBpm getter)
+      and "max BPM reached!" banner when maxBpmReached is true
 
-  SURVIVAL (TODO)
-    - Starts with 3 lives
-    - Every miss costs a life
-    - Every perfect STREAK (e.g. 4 consecutive perfects) gives one back
-    - Gets progressively harder as score increases (ramp up patterns/BPM)
+  SURVIVAL (implemented, NOT TESTED)
+    - Starts with 3 lives (_survivalStartLives), max capped at 5 (_survivalMaxLives)
+    - Every quarter miss costs 1 life
+    - Every perfect streak of 4 consecutive perfects (_streakForLife) gives 1 life back
+      → ok resets the perfect streak, miss also resets it
+    - BPM increases +5 every 4 measures (same ramp as incremental)
     - Ends when lives reach 0
+    - UI should show: lives, perfectStreak getter, currentBpm getter
 
-  CHALLENGE (TODO)
-    - Fixed number of measures (e.g. 16 or 32)
-    - Scored at the end: % of perfect/ok/miss quarters
-    - Shareable result (score, BPM, difficulty)
-    - No lives — just play through and see your score
-    - Good for benchmarking progress over time
+  CHALLENGE (implemented, NOT TESTED)
+    - Fixed number of measures (default 16, configurable via challengeTotalMeasures)
+    - No lives — just play through
+    - Tracks perfect/ok/miss per quarter across all measures
+    - Ends when challengeTotalMeasures completed → challengeComplete = true
+    - Score exposed via: perfectCount, okCount, missCount, totalQuarters getters
+    - UI should show a result screen when challengeComplete is true
+      with score breakdown and % accuracy
 
 
 OTHER TODOs

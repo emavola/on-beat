@@ -9,7 +9,7 @@ import 'measure_controller.dart';
 import 'package:on_beat/services/metronome_service.dart';
 import 'package:on_beat/models/quarter_state.dart';
 
-enum ExerciseMode { normal, zen }
+enum ExerciseMode { normal, zen, incremental, survival, challenge }
 
 enum ExerciseDifficulty {
   easy,
@@ -26,6 +26,7 @@ enum ExerciseDifficulty {
 class ExerciseController extends ChangeNotifier {
   final ExerciseMode mode;
   final ExerciseDifficulty difficulty;
+  final int startBpm;
   final Random _random = Random();
   final MetronomeService metronome = MetronomeService();
   Queue<MeasureModel> visibleMeasure = Queue();
@@ -34,22 +35,81 @@ class ExerciseController extends ChangeNotifier {
 
   static const int maxLives = 10;
 
+  // Incremental / Survival shared BPM ramp constants
+  static const int _bpmStep = 5;
+  static const int _measuresPerStep = 4;
+  static const int _maxBpm = 200;
+
+  // Incremental stop condition
+  static const int _maxConsecutiveMisses = 3;
+
+  // Survival constants
+  static const int _survivalStartLives = 3;
+  static const int _survivalMaxLives = 5;
+  static const int _streakForLife = 4;
+
+  // Challenge constant
+  static const int _defaultChallengeMeasures = 16;
+
   int lives;
+  int _currentBpm = 60;
+  int _measuresCompleted = 0;
+  int _consecutiveMisses = 0;
+  bool maxBpmReached = false;
+
+  // Survival
+  int _perfectStreak = 0;
+  int get perfectStreak => _perfectStreak;
+
+  // Challenge
+  int _perfectCount = 0;
+  int _okCount = 0;
+  int _missCount = 0;
+  bool challengeComplete = false;
+  int get perfectCount => _perfectCount;
+  int get okCount => _okCount;
+  int get missCount => _missCount;
+  int get totalQuarters => _perfectCount + _okCount + _missCount;
+
+  int get currentBpm => _currentBpm;
+
   MeasureController? currentMeasureController;
 
   /// Snapshot of the last completed measure's quarter states.
   /// Set before [_startNewMeasure] so the UI can capture it at transition time.
   List<QuarterState>? lastCompletedStates;
 
+  final int challengeTotalMeasures;
+
   ExerciseController({
     required this.mode,
     this.difficulty = ExerciseDifficulty.easy,
-  }) : lives = mode == ExerciseMode.normal ? maxLives : -1;
+    this.startBpm = 60,
+    this.challengeTotalMeasures = _defaultChallengeMeasures,
+  }) : lives = mode == ExerciseMode.normal
+            ? maxLives
+            : mode == ExerciseMode.survival
+                ? _survivalStartLives
+                : -1,
+       _currentBpm = startBpm;
 
   /// Avvia l'esercizio — prepara il controller ma non avvia il timer.
   /// Chiamare [beginTiming] dopo che il primo frame è stato renderizzato.
   Future<void> start() async {
-    lives = mode == ExerciseMode.normal ? maxLives : -1;
+    lives = mode == ExerciseMode.normal
+        ? maxLives
+        : mode == ExerciseMode.survival
+            ? _survivalStartLives
+            : -1;
+    _currentBpm = startBpm;
+    _measuresCompleted = 0;
+    _consecutiveMisses = 0;
+    _perfectStreak = 0;
+    _perfectCount = 0;
+    _okCount = 0;
+    _missCount = 0;
+    maxBpmReached = false;
+    challengeComplete = false;
     visibleMeasure.clear();
     isFisrtMeasure = true;
     await metronome.init();
@@ -98,7 +158,7 @@ class ExerciseController extends ChangeNotifier {
 
     final controller = MeasureController(
       measure: measure,
-      bpm: 60,
+      bpm: _currentBpm.toDouble(),
       metronome: metronome,
     );
 
@@ -123,17 +183,84 @@ class ExerciseController extends ChangeNotifier {
   }
 
   void _handleMeasureResult(List<QuarterState> states, double endTime) {
+    lastCompletedStates = List.unmodifiable(states);
+
     if (mode == ExerciseMode.normal && lives <= 0) {
       stop();
       return;
     }
-    lastCompletedStates = List.unmodifiable(states);
+
+    if (mode == ExerciseMode.incremental) {
+      if (_consecutiveMisses >= _maxConsecutiveMisses) {
+        stop();
+        return;
+      }
+      _measuresCompleted++;
+      if (_measuresCompleted % _measuresPerStep == 0) {
+        if (_currentBpm >= _maxBpm) {
+          maxBpmReached = true;
+          stop();
+          return;
+        }
+        _currentBpm += _bpmStep;
+      }
+    }
+
+    if (mode == ExerciseMode.survival) {
+      if (lives <= 0) {
+        stop();
+        return;
+      }
+      _measuresCompleted++;
+      if (_measuresCompleted % _measuresPerStep == 0 && _currentBpm < _maxBpm) {
+        _currentBpm += _bpmStep;
+      }
+    }
+
+    if (mode == ExerciseMode.challenge) {
+      _measuresCompleted++;
+      if (_measuresCompleted >= challengeTotalMeasures) {
+        challengeComplete = true;
+        stop();
+        return;
+      }
+    }
+
     _startNewMeasure(endTime);
   }
 
   void _handleQuarterResult(QuarterState state) {
-    if (state == QuarterState.miss && mode == ExerciseMode.normal) {
-      lives--;
+    // Challenge: count every quarter result
+    if (mode == ExerciseMode.challenge) {
+      if (state == QuarterState.perfect) {
+        _perfectCount++;
+      } else if (state == QuarterState.ok) {
+        _okCount++;
+      } else {
+        _missCount++;
+      }
+    }
+
+    if (state == QuarterState.miss) {
+      if (mode == ExerciseMode.normal) lives--;
+      if (mode == ExerciseMode.incremental) _consecutiveMisses++;
+      if (mode == ExerciseMode.survival) {
+        lives--;
+        _perfectStreak = 0;
+      }
+    } else if (state == QuarterState.perfect) {
+      if (mode == ExerciseMode.incremental) _consecutiveMisses = 0;
+      if (mode == ExerciseMode.survival) {
+        _perfectStreak++;
+        if (_perfectStreak >= _streakForLife) {
+          lives = (lives + 1).clamp(0, _survivalMaxLives);
+          _perfectStreak = 0;
+        }
+      }
+    } else {
+      // ok
+      if (mode == ExerciseMode.incremental) _consecutiveMisses = 0;
+      if (mode == ExerciseMode.survival) _perfectStreak = 0;
     }
   }
 
