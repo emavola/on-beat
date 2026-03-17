@@ -250,11 +250,15 @@ class ExerciseController extends ChangeNotifier {
     }
 
     if (state == QuarterState.miss) {
-      if (mode == ExerciseMode.normal) lives--;
+      if (mode == ExerciseMode.normal) {
+        lives = (lives - 1).clamp(0, maxLives);
+        if (lives <= 0) { stop(); return; }
+      }
       if (mode == ExerciseMode.incremental) _consecutiveMisses++;
       if (mode == ExerciseMode.survival) {
-        lives--;
+        lives = (lives - 1).clamp(0, _survivalMaxLives);
         _perfectStreak = 0;
+        if (lives <= 0) { stop(); return; }
       }
     } else if (state == QuarterState.perfect) {
       if (mode == ExerciseMode.incremental) _consecutiveMisses = 0;
