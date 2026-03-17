@@ -126,12 +126,20 @@ class ExerciseController extends ChangeNotifier {
 
   /// Ferma l'esercizio
   void stop() {
-    print("[exercise controller] - stop");
     metronome.dispose();
     currentMeasureController?.removeListener(notifyListeners);
     currentMeasureController?.dispose();
     currentMeasureController = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    currentMeasureController?.removeListener(notifyListeners);
+    currentMeasureController?.dispose();
+    currentMeasureController = null;
+    metronome.dispose();
+    super.dispose();
   }
 
   bool get isRunning => currentMeasureController != null;

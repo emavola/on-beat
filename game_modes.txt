@@ -41,12 +41,13 @@ GAME MODES
     - Fixed difficulty
     - Ends when lives reach 0
 
-  ZEN (implemented)
+  ZEN (implemented, TESTED — works)
     - Infinite lives
     - Fixed BPM
     - No pressure, just practice
+    - Has a Stop button (added after testing — no auto-end condition)
 
-  INCREMENTAL (implemented, NOT TESTED)
+  INCREMENTAL (implemented, TESTED — works, cool)
     - Starts at startBpm (default 60), configurable via constructor
     - BPM increases +5 every 4 measures (_bpmStep, _measuresPerStep constants)
     - Ends on 3 consecutive quarter misses (_maxConsecutiveMisses = 3)

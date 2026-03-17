@@ -12,10 +12,10 @@ import '../services/hit_sensor.dart';
 import '../widgets/quarter_tile.dart';
 
 HitSensor _sensorForType(SensorType type) => switch (type) {
-      SensorType.accelerometer => AccelerometerService(),
-      SensorType.microphone => MicrophoneService(),
-      SensorType.mixed => MixedSensor(),
-    };
+  SensorType.accelerometer => AccelerometerService(),
+  SensorType.microphone => MicrophoneService(),
+  SensorType.mixed => MixedSensor(),
+};
 
 class ExercisePage extends StatefulWidget {
   final SensorType sensorType;
@@ -47,13 +47,12 @@ class _ExercisePageState extends State<ExercisePage>
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
 
-
   @override
   void initState() {
     super.initState();
 
     _sensor = _sensorForType(widget.sensorType);
-    exerciseController = ExerciseController(mode: ExerciseMode.normal);
+    exerciseController = ExerciseController(mode: ExerciseMode.survival);
     exerciseController.addListener(_onControllerChanged);
 
     _slideController = AnimationController(
@@ -98,10 +97,7 @@ class _ExercisePageState extends State<ExercisePage>
     if (mc != null) {
       if (_animatedQueue.isEmpty) {
         // First population: empty played slot + current + next + next+1
-        _animatedQueue = [
-          null,
-          ...exerciseController.visibleMeasure.take(3),
-        ];
+        _animatedQueue = [null, ...exerciseController.visibleMeasure.take(3)];
         _queueStates = [null, null, null, null];
       } else if (_animatedQueue.length >= 2 &&
           _animatedQueue.elementAt(1) != mc.measure &&
@@ -144,11 +140,17 @@ class _ExercisePageState extends State<ExercisePage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-
-            if (exerciseController.mode == ExerciseMode.normal)
+            if (exerciseController.mode == ExerciseMode.normal ||
+                exerciseController.mode == ExerciseMode.survival)
               Text(
                 'Vite: ${exerciseController.lives}',
                 style: const TextStyle(fontSize: 20),
+              ),
+
+            if (exerciseController.isRunning)
+              Text(
+                '${exerciseController.currentBpm} BPM',
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
 
             const SizedBox(height: 24),
@@ -157,6 +159,12 @@ class _ExercisePageState extends State<ExercisePage>
               ElevatedButton(
                 onPressed: _startExercise,
                 child: const Text('Start'),
+              ),
+
+            if (exerciseController.isRunning)
+              TextButton(
+                onPressed: () => setState(() => exerciseController.stop()),
+                child: const Text('Stop'),
               ),
 
             if (measureController != null && _animatedQueue.isNotEmpty)
@@ -181,46 +189,50 @@ class _ExercisePageState extends State<ExercisePage>
                           height: _itemHeight,
                           child: Opacity(
                             opacity: opacity.clamp(0.0, 1.0),
-                            child: m == null
-                                ? const SizedBox.shrink()
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: List.generate(
-                                      m.quarters.length,
-                                      (index) {
-                                        final isCurrent =
-                                            m == measureController.measure;
-                                        final quarter = m.quarters[index];
-                                        final slotStates = _queueStates[i];
-                                        final state = isCurrent
-                                            ? measureController
-                                                .quarterStates[index]
-                                            : slotStates != null
-                                                ? slotStates[index]
-                                                : QuarterState.neutral;
-                                        final isActive =
-                                            isCurrent &&
-                                            measureController
-                                                    .currentQuarterIndex ==
-                                                index;
+                            child:
+                                m == null
+                                    ? const SizedBox.shrink()
+                                    : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: List.generate(
+                                        m.quarters.length,
+                                        (index) {
+                                          final isCurrent =
+                                              m == measureController.measure;
+                                          final quarter = m.quarters[index];
+                                          final slotStates = _queueStates[i];
+                                          final state =
+                                              isCurrent
+                                                  ? measureController
+                                                      .quarterStates[index]
+                                                  : slotStates != null
+                                                  ? slotStates[index]
+                                                  : QuarterState.neutral;
+                                          final isActive =
+                                              isCurrent &&
+                                              measureController
+                                                      .currentQuarterIndex ==
+                                                  index;
 
-                                        return Padding(
-                                          padding: const EdgeInsets.all(10),
-                                          child: QuarterTile(
-                                            key: ObjectKey((m, index)),
-                                            state: state,
-                                            isActive: isActive,
-                                            child: Image.asset(
-                                              quarter.assetPath,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface,
+                                          return Padding(
+                                            padding: const EdgeInsets.all(10),
+                                            child: QuarterTile(
+                                              key: ObjectKey((m, index)),
+                                              state: state,
+                                              isActive: isActive,
+                                              child: Image.asset(
+                                                quarter.assetPath,
+                                                color:
+                                                    Theme.of(
+                                                      context,
+                                                    ).colorScheme.onSurface,
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
                           ),
                         );
                       }),
