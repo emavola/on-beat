@@ -1,0 +1,69 @@
+UI FLOW & STRUCTURE NOTES
+=========================
+Last updated: 2026-03-18
+
+CURRENT STATE
+-------------
+- Home screen: sensor selector + buttons to exercise/test pages
+- Exercise page: hardcoded survival mode, no pre-exercise config
+- No result screen after exercise ends
+- Bottom nav exists (Home, Profile, Stats, Settings) but mostly empty
+
+
+PROPOSED FLOW
+-------------
+
+1. HOME / DASHBOARD
+   - Quick summary of recent activity (later, needs persistence)
+   - Button to start practice → opens Exercise Setup
+
+2. EXERCISE SETUP (bottom sheet or dedicated screen)
+   - Mode selector: Normal / Zen / Incremental / Survival / Challenge
+   - Difficulty: Easy / Medium / Hard
+   - BPM: slider or +/- buttons (per-mode, not global)
+   - Sensor: Accelerometer / Mic / Mixed (with headphone warning for mic/mixed)
+   - Start button
+
+3. EXERCISE PAGE
+   - Queue animation (already works)
+   - Mode-specific UI:
+       Normal:      lives display
+       Zen:         nothing extra, just the queue
+       Incremental: current BPM display, consecutive miss count
+       Survival:    lives + perfect streak counter
+       Challenge:   measure progress (e.g. 8/16), running score
+   - Stop button always visible
+   - Smooth transition to Result screen on exercise end
+
+4. RESULT SCREEN (TODO — does not exist yet)
+   - Normal:      passed (survived all measures) / failed (lives ran out)
+   - Zen:         total measures played, session duration
+   - Incremental: max BPM reached, or "stopped at X BPM after N misses"
+   - Survival:    how many measures survived, max streak reached
+   - Challenge:   full breakdown — perfect/ok/miss counts and percentages,
+                  overall grade (e.g. S/A/B/C)
+   - Retry button (same config) + Back to home button
+
+5. BOTTOM NAV TABS
+   - Practice:  main flow (home → setup → exercise → result)
+   - Stats:     history and progress over time (needs persistence layer)
+   - Settings:  sensor config, metronome sound, latency compensation offset
+   - Profile:   student info (future)
+
+
+MISSING PIECES (priority order)
+--------------------------------
+1. ✅ Exercise Setup screen — ExerciseSetupSheet (bottom sheet, done)
+2. Result screen — post-exercise summary (different per mode)
+3. Exercise page layout adapts per mode (e.g. show streak for survival)
+4. Persistence layer for stats history (later)
+5. Settings screen — latency compensation, metronome volume, etc.
+
+
+NOTES
+-----
+- Exercise page currently hardcodes ExerciseMode.survival (fix when setup screen is built)
+- BPM should be per-mode, not global
+- Test pages (accelerometer, microphone) should move to Settings tab eventually
+- Headphone detection (AudioManager) should replace the current SnackBar warning
+  once the Settings UI is defined (see TODO in home_screen.dart)

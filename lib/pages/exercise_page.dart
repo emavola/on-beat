@@ -19,7 +19,17 @@ HitSensor _sensorForType(SensorType type) => switch (type) {
 
 class ExercisePage extends StatefulWidget {
   final SensorType sensorType;
-  const ExercisePage({super.key, this.sensorType = SensorType.accelerometer});
+  final ExerciseMode mode;
+  final ExerciseDifficulty difficulty;
+  final int bpm;
+
+  const ExercisePage({
+    super.key,
+    this.sensorType = SensorType.accelerometer,
+    this.mode = ExerciseMode.normal,
+    this.difficulty = ExerciseDifficulty.easy,
+    this.bpm = 80,
+  });
 
   @override
   State<ExercisePage> createState() => _ExercisePageState();
@@ -52,7 +62,11 @@ class _ExercisePageState extends State<ExercisePage>
     super.initState();
 
     _sensor = _sensorForType(widget.sensorType);
-    exerciseController = ExerciseController(mode: ExerciseMode.survival);
+    exerciseController = ExerciseController(
+      mode: widget.mode,
+      difficulty: widget.difficulty,
+      startBpm: widget.bpm,
+    );
     exerciseController.addListener(_onControllerChanged);
 
     _slideController = AnimationController(
