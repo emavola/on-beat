@@ -78,6 +78,7 @@ class ExerciseController extends ChangeNotifier {
   int get totalQuarters => _perfectCount + _okCount + _missCount;
 
   int get currentBpm => _currentBpm;
+  int get measuresCompleted => _measuresCompleted;
 
   MeasureController? currentMeasureController;
 
@@ -198,6 +199,7 @@ class ExerciseController extends ChangeNotifier {
 
   void _handleMeasureResult(List<QuarterState> states, double endTime) {
     lastCompletedStates = List.unmodifiable(states);
+    _measuresCompleted++;
 
     if (mode == ExerciseMode.normal && lives <= 0) {
       stop();
@@ -209,7 +211,6 @@ class ExerciseController extends ChangeNotifier {
         stop();
         return;
       }
-      _measuresCompleted++;
       if (_measuresCompleted % _measuresPerStep == 0) {
         if (_currentBpm >= _maxBpm) {
           maxBpmReached = true;
@@ -225,14 +226,12 @@ class ExerciseController extends ChangeNotifier {
         stop();
         return;
       }
-      _measuresCompleted++;
       if (_measuresCompleted % _measuresPerStep == 0 && _currentBpm < _maxBpm) {
         _currentBpm += _bpmStep;
       }
     }
 
     if (mode == ExerciseMode.challenge) {
-      _measuresCompleted++;
       if (_measuresCompleted >= challengeTotalMeasures) {
         challengeComplete = true;
         stop();

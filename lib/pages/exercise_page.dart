@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../controllers/exercise_controller.dart';
+import '../models/exercise_result.dart';
 import '../models/measure_model.dart';
 import '../models/quarter_state.dart';
 import '../services/accelerometer_service.dart';
@@ -10,6 +11,7 @@ import '../services/microphone_service.dart';
 import '../services/mixed_sensor.dart';
 import '../services/hit_sensor.dart';
 import '../widgets/quarter_tile.dart';
+import 'exercise_result_page.dart';
 
 HitSensor _sensorForType(SensorType type) => switch (type) {
   SensorType.accelerometer => AccelerometerService(),
@@ -56,6 +58,9 @@ class _ExercisePageState extends State<ExercisePage>
 
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
+
+  bool _wasRunning = false;
+  bool _resultShown = false;
 
   @override
   void initState() {
@@ -106,7 +111,26 @@ class _ExercisePageState extends State<ExercisePage>
     });
   }
 
+  void _navigateToResult() {
+    if (_resultShown) return;
+    _resultShown = true;
+    _sensor.stop();
+    final result = ExerciseResult.fromController(exerciseController, widget.sensorType);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ExerciseResultPage(result: result)),
+        );
+      }
+    });
+  }
+
   void _onControllerChanged() {
+    final isRunning = exerciseController.isRunning;
+    if (_wasRunning && !isRunning) _navigateToResult();
+    _wasRunning = isRunning;
+
     final mc = exerciseController.currentMeasureController;
     if (mc != null) {
       if (_animatedQueue.isEmpty) {
