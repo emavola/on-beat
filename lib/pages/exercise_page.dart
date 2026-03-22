@@ -158,6 +158,45 @@ class _ExercisePageState extends State<ExercisePage>
     setState(() {});
   }
 
+  Widget _buildModeInfo(BuildContext context) {
+    final ec = exerciseController;
+    final bpmChip = _InfoChip('${ec.currentBpm} BPM');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        alignment: WrapAlignment.center,
+        children: switch (ec.mode) {
+          ExerciseMode.zen => [bpmChip],
+          ExerciseMode.normal => [
+              _InfoChip('Lives: ${ec.lives}', prominent: true),
+              bpmChip,
+            ],
+          ExerciseMode.incremental => [
+              _InfoChip('${ec.currentBpm} BPM', prominent: true),
+              _InfoChip('Misses: ${ec.consecutiveMisses} / 3'),
+            ],
+          ExerciseMode.survival => [
+              _InfoChip('Lives: ${ec.lives}', prominent: true),
+              _InfoChip('Streak: ${ec.perfectStreak} / 4'),
+              bpmChip,
+            ],
+          ExerciseMode.challenge => [
+              _InfoChip(
+                '${ec.measuresCompleted} / ${ec.challengeTotalMeasures}',
+                prominent: true,
+              ),
+              _InfoChip('Perfect: ${ec.perfectCount}'),
+              _InfoChip('Ok: ${ec.okCount}'),
+              _InfoChip('Miss: ${ec.missCount}'),
+            ],
+        },
+      ),
+    );
+  }
+
   double _opacityForIndex(int i, double animValue) {
     final from = _slotOpacities[i.clamp(0, 4)];
     if (animValue == 0.0) return from;
@@ -178,18 +217,7 @@ class _ExercisePageState extends State<ExercisePage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (exerciseController.mode == ExerciseMode.normal ||
-                exerciseController.mode == ExerciseMode.survival)
-              Text(
-                'Vite: ${exerciseController.lives}',
-                style: const TextStyle(fontSize: 20),
-              ),
-
-            if (exerciseController.isRunning)
-              Text(
-                '${exerciseController.currentBpm} BPM',
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
+            if (exerciseController.isRunning) _buildModeInfo(context),
 
             const SizedBox(height: 24),
 
@@ -291,5 +319,26 @@ class _ExercisePageState extends State<ExercisePage>
     exerciseController.dispose();
     _sensor.stop();
     super.dispose();
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+  final bool prominent;
+
+  const _InfoChip(this.label, {this.prominent = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: prominent ? 16 : 13,
+          fontWeight: prominent ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+    );
   }
 }

@@ -79,6 +79,7 @@ class ExerciseController extends ChangeNotifier {
 
   int get currentBpm => _currentBpm;
   int get measuresCompleted => _measuresCompleted;
+  int get consecutiveMisses => _consecutiveMisses;
 
   MeasureController? currentMeasureController;
 
