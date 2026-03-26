@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'settings_service.dart';
 
 class MetronomeService {
   AudioPlayer? _strongPlayer;
@@ -24,10 +25,13 @@ class MetronomeService {
   void play() {
     if (!_initialized) return;
 
+    final volume = SettingsService().metronomeVolume;
     if (_tickIndex == 0) {
+      _strongPlayer!.setVolume(volume);
       _strongPlayer!.seek(Duration.zero);
       _strongPlayer!.resume();
     } else {
+      _weakPlayer!.setVolume(volume);
       _weakPlayer!.seek(Duration.zero);
       _weakPlayer!.resume();
     }

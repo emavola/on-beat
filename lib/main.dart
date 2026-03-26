@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:on_beat/navigation/app_router.dart';
+import 'package:on_beat/services/settings_service.dart';
 import 'package:on_beat/themes/app_theme.dart';
 import 'navigation/app_routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SettingsService().load();
   runApp(const MyApp());
 }
 

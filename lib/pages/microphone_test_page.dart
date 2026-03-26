@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/microphone_service.dart';
 import '../services/metronome_service.dart';
+import '../services/settings_service.dart';
 
 class MicrophoneTestPage extends StatefulWidget {
   const MicrophoneTestPage({super.key});
@@ -15,6 +16,7 @@ class MicrophoneTestPage extends StatefulWidget {
 class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
   final MicrophoneService mic = MicrophoneService();
   final MetronomeService _metronome = MetronomeService();
+  final SettingsService _settings = SettingsService();
 
   int _hitCount = 0;
   bool _flash = false;
@@ -118,8 +120,37 @@ class _MicrophoneTestPageState extends State<MicrophoneTestPage> {
             const SizedBox(height: 8),
             _InfoRow(
               label: 'threshold',
-              value: 0.15, // matches AudioHitDetector.THRESHOLD in Kotlin
+              value: _settings.micThreshold,
               color: Colors.orangeAccent,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove, size: 18),
+                  onPressed: _settings.micThreshold > 0.01
+                      ? () async {
+                          final v = (_settings.micThreshold - 0.01).clamp(0.01, 1.0);
+                          await _settings.setMicThreshold(v);
+                          await mic.setThreshold(v);
+                          setState(() {});
+                        }
+                      : null,
+                ),
+                const Text('threshold', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: _settings.micThreshold < 1.0
+                      ? () async {
+                          final v = (_settings.micThreshold + 0.01).clamp(0.01, 1.0);
+                          await _settings.setMicThreshold(v);
+                          await mic.setThreshold(v);
+                          setState(() {});
+                        }
+                      : null,
+                ),
+              ],
             ),
             const SizedBox(height: 32),
             Row(

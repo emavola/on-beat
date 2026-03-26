@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'hit_sensor.dart';
+import 'settings_service.dart';
 
 class AccelerometerService implements HitSensor {
   static final AccelerometerService _instance =
@@ -78,7 +79,7 @@ class AccelerometerService implements HitSensor {
 
     // Threshold + cooldown on raw magnitude.
     final bool cooledDown = now.difference(_lastHitTime) > _hitCooldown;
-    if (magnitude > threshold && cooledDown) {
+    if (magnitude > SettingsService().accelThreshold && cooledDown) {
       _lastHitTime = now;
       onHitDetected?.call(now.millisecondsSinceEpoch.toDouble());
     }

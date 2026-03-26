@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/accelerometer_service.dart';
 import '../services/metronome_service.dart';
+import '../services/settings_service.dart';
 
 class AccelerometerTestPage extends StatefulWidget {
   const AccelerometerTestPage({super.key});
@@ -15,6 +16,7 @@ class AccelerometerTestPage extends StatefulWidget {
 class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
   final AccelerometerService acc = AccelerometerService();
   final MetronomeService _metronome = MetronomeService();
+  final SettingsService _settings = SettingsService();
 
   int _hitCount = 0;
   bool _flash = false;
@@ -118,8 +120,31 @@ class _AccelerometerTestPageState extends State<AccelerometerTestPage> {
             const SizedBox(height: 8),
             _InfoRow(
               label: 'threshold',
-              value: AccelerometerService.threshold,
+              value: _settings.accelThreshold,
               color: Colors.orangeAccent,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove, size: 18),
+                  onPressed: _settings.accelThreshold > 0.1
+                      ? () => setState(() => _settings.setAccelThreshold(
+                            (_settings.accelThreshold - 0.1).clamp(0.1, 3.0),
+                          ))
+                      : null,
+                ),
+                const Text('threshold', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: _settings.accelThreshold < 3.0
+                      ? () => setState(() => _settings.setAccelThreshold(
+                            (_settings.accelThreshold + 0.1).clamp(0.1, 3.0),
+                          ))
+                      : null,
+                ),
+              ],
             ),
             const SizedBox(height: 32),
             Row(

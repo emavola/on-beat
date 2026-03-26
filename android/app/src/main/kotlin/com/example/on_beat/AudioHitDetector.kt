@@ -17,8 +17,14 @@ class AudioHitDetector(channel: EventChannel) : EventChannel.StreamHandler {
 
     companion object {
         const val SAMPLE_RATE = 16000
-        const val THRESHOLD = 0.15f   // amplitude [0-1], tune via test page
+        const val DEFAULT_threshold = 0.15f
         const val COOLDOWN_MS = 150L
+    }
+
+    @Volatile private var threshold = DEFAULT_threshold
+
+    fun setThreshold(value: Float) {
+        threshold = value.coerceIn(0.01f, 1.0f)
     }
 
     init {
@@ -77,10 +83,10 @@ class AudioHitDetector(channel: EventChannel) : EventChannel.StreamHandler {
                     val amp = buffer[i].toFloat() / Short.MAX_VALUE.toFloat()
                     val absAmp = if (amp < 0) -amp else amp
                     if (absAmp > peak) peak = absAmp
-                    if (onsetIndex < 0 && absAmp > THRESHOLD) onsetIndex = i
+                    if (onsetIndex < 0 && absAmp > threshold) onsetIndex = i
                 }
 
-                if (peak <= THRESHOLD || onsetIndex < 0) continue
+                if (peak <= threshold || onsetIndex < 0) continue
 
                 // Calculate onset time using AudioTimestamp for hardware precision.
                 // Falls back to simple back-calculation from bufferEndNs if unavailable.

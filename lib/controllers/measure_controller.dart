@@ -6,6 +6,7 @@ import '../models/measure_model.dart';
 import '../models/quarter_model.dart';
 import '../models/quarter_state.dart';
 import '../services/metronome_service.dart';
+import '../services/settings_service.dart';
 
 class MeasureController extends ChangeNotifier {
   final MeasureModel measure;
@@ -103,9 +104,8 @@ class MeasureController extends ChangeNotifier {
     const double perfectWindow = 80.0;
     const double okWindow = 160.0;
 
-    // Compensate for audio output latency: the user hears the metronome click
-    // this many ms after the internal beat timestamp, so their hit arrives late.
-    const double audioLatencyMs = 150.0;
+    // Compensate for audio output latency: configurable in Settings.
+    final double audioLatencyMs = SettingsService().latencyMs;
 
     final List<double> expectedTimes =
         quarter.expectedHits

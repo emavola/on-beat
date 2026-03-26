@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'hit_sensor.dart';
+import 'settings_service.dart';
 
 class MicrophoneService implements HitSensor {
   static final MicrophoneService _instance = MicrophoneService._internal();
@@ -10,6 +11,8 @@ class MicrophoneService implements HitSensor {
 
   static const EventChannel _channel =
       EventChannel('com.example.on_beat/audio_hit');
+  static const MethodChannel _configChannel =
+      MethodChannel('com.example.on_beat/audio_config');
 
   StreamSubscription? _subscription;
 
@@ -20,11 +23,16 @@ class MicrophoneService implements HitSensor {
   @override
   void Function(double magnitude)? onMagnitudeUpdate;
 
+  Future<void> setThreshold(double value) async {
+    await _configChannel.invokeMethod('setThreshold', {'threshold': value});
+  }
+
   @override
   Future<void> start() async {
     final status = await Permission.microphone.request();
     if (!status.isGranted) return;
 
+    await setThreshold(SettingsService().micThreshold);
     _subscription?.cancel();
     magnitudesForChart.clear();
 
