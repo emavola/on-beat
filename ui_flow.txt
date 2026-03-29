@@ -1,69 +1,84 @@
 UI FLOW & STRUCTURE NOTES
 =========================
-Last updated: 2026-03-18
+Last updated: 2026-03-29
 
 CURRENT STATE
 -------------
-- Home screen: sensor selector + buttons to exercise/test pages
-- Exercise page: hardcoded survival mode, no pre-exercise config
-- No result screen after exercise ends
-- Bottom nav exists (Home, Profile, Stats, Settings) but mostly empty
+Full exercise flow is working end-to-end:
+  Home → Exercise Setup → Exercise → Result
+Settings, Calibration, and test pages are functional.
+Portrait-only orientation locked.
 
 
-PROPOSED FLOW
--------------
+FULL FLOW
+---------
 
 1. HOME / DASHBOARD
-   - Quick summary of recent activity (later, needs persistence)
-   - Button to start practice → opens Exercise Setup
+   ✅ "Start Practice" button → opens ExerciseSetupSheet
+   ✅ Shortcut buttons for accelerometer test and microphone test
+   ☐  Quick summary of recent activity (needs persistence layer)
 
-2. EXERCISE SETUP (bottom sheet or dedicated screen)
-   - Mode selector: Normal / Zen / Incremental / Survival / Challenge
-   - Difficulty: Easy / Medium / Hard
-   - BPM: slider or +/- buttons (per-mode, not global)
-   - Sensor: Accelerometer / Mic / Mixed (with headphone warning for mic/mixed)
-   - Start button
+2. EXERCISE SETUP (bottom sheet)
+   ✅ Mode selector: Normal / Zen / Incremental / Survival / Challenge
+   ✅ Difficulty: Easy / Medium / Hard
+   ✅ BPM: +/- buttons (per-mode defaults)
+   ✅ Sensor: Accelerometer / Mic / Mixed (headphone warning SnackBar)
+   ✅ Start button → navigates to ExercisePage with all params
 
 3. EXERCISE PAGE
-   - Queue animation (already works)
-   - Mode-specific UI:
-       Normal:      lives display
-       Zen:         nothing extra, just the queue
-       Incremental: current BPM display, consecutive miss count
-       Survival:    lives + perfect streak counter
-       Challenge:   measure progress (e.g. 8/16), running score
-   - Stop button always visible
-   - Smooth transition to Result screen on exercise end
+   ✅ Queue animation with evaluated quarter states
+   ✅ Mode-specific info chips:
+       Normal:      nothing extra (lives not shown — Normal has no lives mechanic)
+       Zen:         measures completed counter
+       Incremental: current BPM, consecutive misses
+       Survival:    lives + streak counter
+       Challenge:   measure progress (X/16)
+   ✅ Stop button
+   ✅ Navigates to ExerciseResultPage when exercise stops
 
-4. RESULT SCREEN (TODO — does not exist yet)
-   - Normal:      passed (survived all measures) / failed (lives ran out)
-   - Zen:         total measures played, session duration
-   - Incremental: max BPM reached, or "stopped at X BPM after N misses"
-   - Survival:    how many measures survived, max streak reached
-   - Challenge:   full breakdown — perfect/ok/miss counts and percentages,
-                  overall grade (e.g. S/A/B/C)
-   - Retry button (same config) + Back to home button
+4. RESULT SCREEN
+   ✅ Per-mode result:
+       Normal:      pass/fail + measures completed
+       Zen:         total measures played
+       Incremental: max BPM reached
+       Survival:    measures survived, lives left
+       Challenge:   perfect/ok/miss breakdown
+   ✅ Back to Home button
+   ☐  Retry button (same config — needs config passed through to result page)
 
 5. BOTTOM NAV TABS
-   - Practice:  main flow (home → setup → exercise → result)
-   - Stats:     history and progress over time (needs persistence layer)
-   - Settings:  sensor config, metronome sound, latency compensation offset
-   - Profile:   student info (future)
+   ✅ Home:     main practice flow
+   ✅ Settings: latency, metronome volume, accel/mic thresholds, default sensor
+   ☐  Stats:    history and progress (needs persistence layer)
+   ☐  Profile:  student info (future)
+
+6. SETTINGS
+   ✅ Audio latency compensation slider (0–300ms)
+   ✅ Metronome volume slider
+   ✅ Accelerometer hit threshold slider
+   ✅ Microphone hit threshold slider (sent to native via MethodChannel)
+   ✅ Default sensor selector
+   ✅ Open Calibration button
+   ✅ Reset to defaults
+
+7. CALIBRATION PAGE
+   ✅ Audio latency: tap-along calibration (count-in → 8 beats → avg delta → apply)
+   ✅ Sensor threshold: accel/mic selector, multi-sample average, apply button
 
 
-MISSING PIECES (priority order)
---------------------------------
-1. ✅ Exercise Setup screen — ExerciseSetupSheet (bottom sheet, done)
-2. Result screen — post-exercise summary (different per mode)
-3. Exercise page layout adapts per mode (e.g. show streak for survival)
-4. Persistence layer for stats history (later)
-5. Settings screen — latency compensation, metronome volume, etc.
+MISSING / TODO (priority order)
+---------------------------------
+1. ✅ Retry button on result screen (config stored in ExerciseResult, re-launches with same params)
+2. ☐  Persistence layer for session history (Stats tab)
+3. ☐  Stats screen: history, progress charts
+4. ☐  Profile screen (future)
+5. ☐  Headphone detection (AudioManager) to replace SnackBar warning
+6. ☐  Move test pages under Settings tab instead of home screen shortcuts
 
 
 NOTES
 -----
-- Exercise page currently hardcodes ExerciseMode.survival (fix when setup screen is built)
-- BPM should be per-mode, not global
-- Test pages (accelerometer, microphone) should move to Settings tab eventually
-- Headphone detection (AudioManager) should replace the current SnackBar warning
-  once the Settings UI is defined (see TODO in home_screen.dart)
+- Survival/Challenge modes not fully battle-tested
+- Debug print statements still in measure_controller.dart and exercise_controller.dart
+- Strategy pattern refactor for ExerciseMode noted as TODO in exercise_controller.dart
+- BPM is per-session (set in setup sheet), not global

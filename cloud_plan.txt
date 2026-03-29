@@ -1,0 +1,111 @@
+CLOUD INTEGRATION PLAN
+======================
+Last updated: 2026-03-29
+
+WHY FIREBASE
+------------
+- Official Flutter SDK (firebase_core, cloud_firestore, firebase_auth)
+- Firestore has built-in offline persistence — app works without internet,
+  syncs when connection is restored (great for a music practice app)
+- Free Spark plan is more than enough for a student project
+- Well-documented, fast to set up
+
+
+SERVICES TO USE
+---------------
+
+1. Firebase Auth
+   - Anonymous auth first (no login required to use the app)
+   - Optional: upgrade to Google Sign-In so data follows the user across devices
+   - Each user gets a UID that links to their data in Firestore
+
+2. Cloud Firestore
+   - Main data store for session history and user profile
+   - Offline persistence enabled by default
+
+3. (Optional later) Firebase Analytics
+   - Track which modes are used most, average session length, etc.
+   - Free, passive, no extra code needed beyond the initial setup
+
+
+FIRESTORE DATA MODEL
+--------------------
+
+/users/{uid}/
+  - displayName: string
+  - createdAt: timestamp
+  - totalSessions: int       (denormalized counter, avoids counting queries)
+  - totalMeasures: int
+
+/users/{uid}/sessions/{sessionId}/
+  - timestamp:         Timestamp
+  - mode:              string   ("normal" | "zen" | "incremental" | "survival" | "challenge")
+  - difficulty:        string   ("easy" | "medium" | "hard")
+  - sensorType:        string   ("accelerometer" | "microphone" | "mixed")
+  - startBpm:          int
+  - finalBpm:          int
+  - measuresCompleted: int
+  - durationSeconds:   int      (derived: time from start to stop)
+
+  // per-mode extras (null if not relevant for that mode)
+  - lives:             int?     (normal, survival)
+  - maxBpmReached:     bool?    (incremental)
+  - perfectStreak:     int?     (survival)
+  - perfectCount:      int?     (challenge)
+  - okCount:           int?     (challenge)
+  - missCount:         int?     (challenge)
+  - grade:             string?  (challenge: S/A/B/C)
+
+
+WHAT TO SHOW IN THE STATS TAB
+------------------------------
+All data comes from querying /users/{uid}/sessions/ ordered by timestamp desc.
+
+Summary cards (top of screen):
+  - Total sessions
+  - Total measures practiced
+  - Current practice streak (days in a row with at least 1 session)
+  - Favorite mode (most played)
+
+Recent sessions list:
+  - Last 20 sessions, scrollable
+  - Each row: mode icon + date + key stat (grade for challenge, max BPM for incremental, etc.)
+
+Best scores per mode:
+  - Normal:      highest measures completed without losing all lives
+  - Zen:         longest session (most measures)
+  - Incremental: highest BPM ever reached
+  - Survival:    most measures survived in one run
+  - Challenge:   best grade (S > A > B > C) + best perfect%
+
+
+IMPLEMENTATION STEPS
+--------------------
+1. Add Firebase to the project (flutterfire configure)
+   Packages: firebase_core, firebase_auth, cloud_firestore
+
+2. Update main.dart: await Firebase.initializeApp() before runApp
+
+3. Create AuthService (singleton like SettingsService):
+   - signInAnonymously() on first launch
+   - currentUid getter
+
+4. Create SessionRepository:
+   - saveSession(ExerciseResult result, int durationSeconds) → writes to Firestore
+   - getSessions({int limit}) → returns List<SessionDoc>
+   - getStats() → aggregated stats for the stats screen
+
+5. Hook saveSession into ExerciseResultPage:
+   - After exercise ends, automatically save to cloud (no user action needed)
+
+6. Build StatsScreen using SessionRepository.getStats()
+
+7. (Optional) Add Google Sign-In so data persists if app is reinstalled
+
+
+NOTES
+-----
+- Keep local stats working even if Firestore write fails (catch errors silently)
+- Session saving should be fire-and-forget (don't block the result screen)
+- Firestore security rules: users can only read/write their own /users/{uid}/ subtree
+- For the exam: anonymous auth is fine, no need for a full login screen

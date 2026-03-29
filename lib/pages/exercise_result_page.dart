@@ -2,12 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../controllers/exercise_controller.dart';
 import '../models/exercise_result.dart';
+import '../services/session_repository.dart';
 import 'exercise_page.dart';
 
-class ExerciseResultPage extends StatelessWidget {
+class ExerciseResultPage extends StatefulWidget {
   final ExerciseResult result;
+  final int durationSeconds;
 
-  const ExerciseResultPage({super.key, required this.result});
+  const ExerciseResultPage({
+    super.key,
+    required this.result,
+    required this.durationSeconds,
+  });
+
+  @override
+  State<ExerciseResultPage> createState() => _ExerciseResultPageState();
+}
+
+class _ExerciseResultPageState extends State<ExerciseResultPage> {
+  ExerciseResult get result => widget.result;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fire-and-forget — never blocks the UI
+    SessionRepository().saveSession(result, widget.durationSeconds);
+  }
 
   void _retry(BuildContext context) {
     Navigator.pushReplacement(
@@ -36,7 +56,7 @@ class ExerciseResultPage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           child: Column(
             children: [
-              Expanded(child: _buildBody(context)),
+              Expanded(child: _buildBody()),
               _buildButtons(context),
             ],
           ),
@@ -45,7 +65,7 @@ class ExerciseResultPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody() {
     return switch (result.mode) {
       ExerciseMode.normal => _NormalResult(result: result),
       ExerciseMode.zen => _ZenResult(result: result),

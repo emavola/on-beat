@@ -61,6 +61,7 @@ class _ExercisePageState extends State<ExercisePage>
 
   bool _wasRunning = false;
   bool _resultShown = false;
+  DateTime? _exerciseStartTime;
 
   @override
   void initState() {
@@ -104,6 +105,7 @@ class _ExercisePageState extends State<ExercisePage>
     _queueStates = [];
     _slideController.stop();
     _slideController.reset();
+    _exerciseStartTime = DateTime.now();
     await exerciseController.start();
     _sensor.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -116,11 +118,19 @@ class _ExercisePageState extends State<ExercisePage>
     _resultShown = true;
     _sensor.stop();
     final result = ExerciseResult.fromController(exerciseController, widget.sensorType);
+    final duration = _exerciseStartTime == null
+        ? 0
+        : DateTime.now().difference(_exerciseStartTime!).inSeconds;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => ExerciseResultPage(result: result)),
+          MaterialPageRoute(
+            builder: (_) => ExerciseResultPage(
+              result: result,
+              durationSeconds: duration,
+            ),
+          ),
         );
       }
     });
