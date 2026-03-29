@@ -66,6 +66,21 @@ class SessionRepository {
     }
   }
 
+  /// Returns sessions played today.
+  Future<List<SessionDoc>> getTodaySessions() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final snap = await _sessions
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .orderBy('timestamp', descending: true)
+          .get();
+      return snap.docs.map((d) => SessionDoc.fromFirestore(d)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Returns the last [limit] sessions ordered by newest first.
   Future<List<SessionDoc>> getRecentSessions({int limit = 20}) async {
     try {
