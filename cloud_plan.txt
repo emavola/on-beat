@@ -79,33 +79,41 @@ Best scores per mode:
   - Challenge:   best grade (S > A > B > C) + best perfect%
 
 
-IMPLEMENTATION STEPS
+IMPLEMENTATION STATUS
 --------------------
-1. Add Firebase to the project (flutterfire configure)
-   Packages: firebase_core, firebase_auth, cloud_firestore
+✅ 1. Firebase added (firebase_core, firebase_auth, cloud_firestore, google_sign_in)
+      google-services.json excluded from git (.gitignore)
+      minSdk bumped to 23 (required by firebase_auth)
+      google-services Gradle plugin added to settings.gradle.kts + app/build.gradle.kts
 
-2. Update main.dart: await Firebase.initializeApp() before runApp
+✅ 2. main.dart: Firebase.initializeApp() + signInAnonymously() on launch
 
-3. Create AuthService (singleton like SettingsService):
-   - signInAnonymously() on first launch
-   - currentUid getter
+✅ 3. AuthService (lib/services/auth_service.dart):
+      - signInAnonymously()
+      - linkWithGoogle() — links anonymous account to Google, handles credential-already-in-use
+      - signOut()
 
-4. Create SessionRepository:
-   - saveSession(ExerciseResult result, int durationSeconds) → writes to Firestore
-   - getSessions({int limit}) → returns List<SessionDoc>
-   - getStats() → aggregated stats for the stats screen
+✅ 4. SessionRepository (lib/services/session_repository.dart):
+      - saveSession() — batch write: session doc + user counter increment
+      - getRecentSessions(limit) → List<SessionDoc>
+      - getStats() → StatsData (aggregated: streak, favorite mode, best scores)
+      - All errors caught silently, never crashes the UI
 
-5. Hook saveSession into ExerciseResultPage:
-   - After exercise ends, automatically save to cloud (no user action needed)
+✅ 5. ExerciseResultPage saves session automatically on init (fire-and-forget)
+      durationSeconds tracked from exercise start time in ExercisePage
 
-6. Build StatsScreen using SessionRepository.getStats()
+✅ 6. StatsScreen built (lib/screens/stats_screen.dart):
+      - Summary cards: total sessions, total measures, streak, favorite mode
+      - Best scores: incremental max BPM, survival longest run, challenge best perfect%
+      - Recent sessions list (last 20) with pull-to-refresh
 
-7. (Optional) Add Google Sign-In so data persists if app is reinstalled
+☐  7. Google Sign-In UI — AuthService is ready, but no button in the app yet
+       (anonymous auth works fine for the exam)
 
 
 NOTES
 -----
-- Keep local stats working even if Firestore write fails (catch errors silently)
-- Session saving should be fire-and-forget (don't block the result screen)
-- Firestore security rules: users can only read/write their own /users/{uid}/ subtree
-- For the exam: anonymous auth is fine, no need for a full login screen
+- Firestore security rules: set to test mode for now — lock down before production
+  Rule to add: allow read, write: if request.auth.uid == resource.data.uid (on sessions)
+- Session saving is fire-and-forget, never blocks the result screen
+- Anonymous UID persists across app restarts unless app is uninstalled

@@ -114,11 +114,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onSelectionChanged: (s) => _settings.setSensorType(s.first),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          _SectionHeader('Tools'),
+          const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () => Navigator.pushNamed(context, AppRoutes.calibration),
             icon: const Icon(Icons.tune),
-            label: const Text('Open Calibration'),
+            label: const Text('Calibration'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.accelerometerTest),
+            icon: const Icon(Icons.vibration),
+            label: const Text('Accelerometer test'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.microphoneTest),
+            icon: const Icon(Icons.mic),
+            label: const Text('Microphone test'),
           ),
           const SizedBox(height: 8),
           TextButton(
