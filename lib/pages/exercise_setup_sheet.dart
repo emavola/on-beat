@@ -96,6 +96,26 @@ class _ExerciseSetupSheetState extends State<ExerciseSetupSheet> {
               );
             }).toList(),
           ),
+          const SizedBox(height: 12),
+          // Mode description
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Container(
+              key: ValueKey(_mode),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _modeDescription(_mode),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
 
           // Difficulty
@@ -189,8 +209,10 @@ class _ExerciseSetupSheetState extends State<ExerciseSetupSheet> {
               onPressed: _start,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
-              child: const Text('Start'),
+              child: const Text('Start', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -205,4 +227,17 @@ String _modeLabel(ExerciseMode mode) => switch (mode) {
       ExerciseMode.incremental => 'Incremental',
       ExerciseMode.survival => 'Survival',
       ExerciseMode.challenge => 'Challenge',
+    };
+
+String _modeDescription(ExerciseMode mode) => switch (mode) {
+      ExerciseMode.normal =>
+        'Play through a set of measures. You have 3 lives — miss too many quarters and it\'s game over.',
+      ExerciseMode.zen =>
+        'No lives, no pressure. Just play and focus on your timing. Goes on until you stop.',
+      ExerciseMode.incremental =>
+        'BPM increases every 4 measures. How fast can you go before missing too many in a row?',
+      ExerciseMode.survival =>
+        'Unlimited measures, limited lives. Nail 4 in a row to earn a life back. How long can you last?',
+      ExerciseMode.challenge =>
+        '16 measures at a fixed BPM. Every quarter counts — you\'ll get a grade at the end.',
     };
