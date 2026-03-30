@@ -15,11 +15,13 @@ class _HomeData {
   final int streak;
   final List<SessionDoc> todaySessions;
   final SessionDoc? lastSession;
+  final String? nickname;
 
   const _HomeData({
     required this.streak,
     required this.todaySessions,
     required this.lastSession,
+    required this.nickname,
   });
 }
 
@@ -38,14 +40,17 @@ class _HomeScreenState extends State<HomeScreen> {
       repo.getTodaySessions(),
       repo.getRecentSessions(limit: 1),
       repo.getStats(),
+      repo.getNickname(),
     ]);
     final today = results[0] as List<SessionDoc>;
     final recent = results[1] as List<SessionDoc>;
     final stats = results[2] as StatsData;
+    final nickname = results[3] as String?;
     return _HomeData(
       streak: stats.currentStreak,
       todaySessions: today,
       lastSession: recent.firstOrNull,
+      nickname: nickname,
     );
   }
 
@@ -76,8 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 32),
-            _buildHeader(context),
-            const SizedBox(height: 32),
             FutureBuilder<_HomeData>(
               future: _dataFuture,
               builder: (context, snap) {
@@ -85,6 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildHeader(context, data?.nickname),
+                    const SizedBox(height: 32),
                     _buildTodayRow(context, data),
                     const SizedBox(height: 16),
                     _buildLastSession(context, data?.lastSession),
@@ -101,12 +106,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String? nickname) {
+    final name = nickname?.isNotEmpty == true ? nickname! : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _greeting,
+          name != null ? '$_greeting, $name' : _greeting,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

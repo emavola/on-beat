@@ -66,6 +66,24 @@ class SessionRepository {
     }
   }
 
+  Future<String?> getNickname() async {
+    try {
+      final snap = await _userDoc.get();
+      return snap.data()?['nickname'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setNickname(String nickname) async {
+    try {
+      await _userDoc.set(
+        {'nickname': nickname.trim()},
+        SetOptions(merge: true),
+      );
+    } catch (_) {}
+  }
+
   /// Returns sessions played today.
   Future<List<SessionDoc>> getTodaySessions() async {
     try {
