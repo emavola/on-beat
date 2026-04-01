@@ -409,7 +409,7 @@ class _ExercisePageState extends State<ExercisePage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Esercizio Batteria'),
+        title: const Text('On Beat'),
         centerTitle: true,
       ),
       body: Center(

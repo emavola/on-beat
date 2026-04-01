@@ -134,20 +134,8 @@ class MeasureController extends ChangeNotifier {
       }
 
       if (bestDelta == null) {
-        print('  [Q$currentQuarterIndex] expected=$expected — NO HIT');
         continue;
       }
-
-      final grade = bestDelta <= perfectWindow
-          ? '✅ perfect'
-          : bestDelta <= okWindow
-              ? '🟡 ok'
-              : '❌ miss (delta=${bestDelta.toStringAsFixed(0)}ms)';
-      print(
-        '  [Q$currentQuarterIndex] expected=${expected.toStringAsFixed(0)}'
-        ' hit=${bestHit!.toStringAsFixed(0)}'
-        ' delta=${bestDelta.toStringAsFixed(0)}ms → $grade',
-      );
 
       if (bestDelta <= perfectWindow) {
         matchedPerfect++;
