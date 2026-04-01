@@ -101,8 +101,18 @@ class ExerciseController extends ChangeNotifier {
                 : -1,
        _currentBpm = startBpm;
 
+  /// Pre-populates the visible queue so the UI can show measures before start.
+  /// Call this when the exercise page opens.
+  Future<void> preview() async {
+    visibleMeasure.clear();
+    _initRandomMeasure();
+    await metronome.init();
+    notifyListeners();
+  }
+
   /// Avvia l'esercizio — prepara il controller ma non avvia il timer.
   /// Chiamare [beginTiming] dopo che il primo frame è stato renderizzato.
+  /// Se [preview] è già stato chiamato, riusa la coda esistente.
   Future<void> start() async {
     lives = mode == ExerciseMode.normal
         ? maxLives
@@ -118,10 +128,13 @@ class ExerciseController extends ChangeNotifier {
     _missCount = 0;
     maxBpmReached = false;
     challengeComplete = false;
-    visibleMeasure.clear();
     isFisrtMeasure = true;
+    // Reuse queue from preview() — don't regenerate so the user plays
+    // the same measures they saw during preview/count-in.
+    if (visibleMeasure.isEmpty) {
+      _initRandomMeasure();
+    }
     await metronome.init();
-    _initRandomMeasure();
     _startNewMeasure(0, startTiming: false);
   }
 

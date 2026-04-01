@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../controllers/exercise_controller.dart';
+import '../controllers/measure_controller.dart';
 import '../models/exercise_result.dart';
 import '../models/measure_model.dart';
 import '../models/quarter_state.dart';
@@ -18,6 +20,8 @@ HitSensor _sensorForType(SensorType type) => switch (type) {
   SensorType.microphone => MicrophoneService(),
   SensorType.mixed => MixedSensor(),
 };
+
+enum _PageState { preview, countIn, running }
 
 class ExercisePage extends StatefulWidget {
   final SensorType sensorType;
@@ -38,26 +42,29 @@ class ExercisePage extends StatefulWidget {
 }
 
 class _ExercisePageState extends State<ExercisePage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late ExerciseController exerciseController;
   late final HitSensor _sensor;
 
   // QuarterTile 70px + Padding(all(10)) = 90px per row.
-  // 4 visible slots: [played|empty, current, next, next+1]
   static const double _itemHeight = 90.0;
 
   // Opacity by slot index: 0=played, 1=current, 2=next, 3=next+1, 4=entering
   static const List<double> _slotOpacities = [0.3, 1.0, 0.55, 0.25, 0.0];
 
-  // null = empty played slot (no previous measure yet)
+  // Running queue state
   List<MeasureModel?> _animatedQueue = [];
-
-  // Parallel to _animatedQueue: evaluated states snapshot for each slot.
-  // null means no evaluated states (neutral display).
   List<List<QuarterState>?> _queueStates = [];
-
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
+
+  // Count-in state
+  _PageState _pageState = _PageState.preview;
+  String? _countdownLabel;
+  int _countdownStep = 0;
+  Timer? _countInTimer;
+  late AnimationController _stampController;
+  late Animation<double> _stampAnim;
 
   bool _wasRunning = false;
   bool _resultShown = false;
@@ -85,8 +92,6 @@ class _ExercisePageState extends State<ExercisePage>
     );
     _slideController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        // Reset BEFORE setState so AnimatedBuilder rebuilds at value=0,
-        // keeping all 4 slots at the correct positions.
         _slideController.reset();
         setState(() {
           _animatedQueue = _animatedQueue.sublist(1);
@@ -95,17 +100,72 @@ class _ExercisePageState extends State<ExercisePage>
       }
     });
 
+    _stampController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _stampAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _stampController, curve: Curves.elasticOut),
+    );
+
     _sensor.onHitDetected = (double timestampMs) {
       exerciseController.currentMeasureController?.onHit(timestampMs);
     };
+
+    exerciseController.preview();
   }
 
-  Future<void> _startExercise() async {
+  void _startCountIn() {
+    setState(() {
+      _pageState = _PageState.countIn;
+      _countdownStep = 0;
+    });
+
+    final beatDuration = Duration(
+      milliseconds: (60000 / widget.bpm).round(),
+    );
+
+    // Fire the first beat ("3") immediately
+    _fireCountInBeat();
+
+    _countInTimer = Timer.periodic(beatDuration, (timer) {
+      if (_countdownStep >= 4) {
+        timer.cancel();
+        _launchExercise();
+      } else {
+        _fireCountInBeat();
+      }
+    });
+  }
+
+  void _fireCountInBeat() {
+    exerciseController.metronome.play();
+    _countdownStep++;
+
+    final label = switch (_countdownStep) {
+      1 => '3',
+      2 => '2',
+      3 => '1',
+      4 => 'GO!',
+      _ => null,
+    };
+
+    setState(() => _countdownLabel = label);
+    _stampController.forward(from: 0.0);
+  }
+
+  Future<void> _launchExercise() async {
     _animatedQueue = [];
     _queueStates = [];
     _slideController.stop();
     _slideController.reset();
     _exerciseStartTime = DateTime.now();
+
+    setState(() {
+      _pageState = _PageState.running;
+      _countdownLabel = null;
+    });
+
     await exerciseController.start();
     _sensor.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -117,7 +177,10 @@ class _ExercisePageState extends State<ExercisePage>
     if (_resultShown) return;
     _resultShown = true;
     _sensor.stop();
-    final result = ExerciseResult.fromController(exerciseController, widget.sensorType);
+    final result = ExerciseResult.fromController(
+      exerciseController,
+      widget.sensorType,
+    );
     final duration = _exerciseStartTime == null
         ? 0
         : DateTime.now().difference(_exerciseStartTime!).inSeconds;
@@ -142,7 +205,7 @@ class _ExercisePageState extends State<ExercisePage>
     _wasRunning = isRunning;
 
     final mc = exerciseController.currentMeasureController;
-    if (mc != null) {
+    if (mc != null && _pageState == _PageState.running) {
       if (_animatedQueue.isEmpty) {
         // First population: empty played slot + current + next + next+1
         _animatedQueue = [null, ...exerciseController.visibleMeasure.take(3)];
@@ -150,13 +213,8 @@ class _ExercisePageState extends State<ExercisePage>
       } else if (_animatedQueue.length >= 2 &&
           _animatedQueue.elementAt(1) != mc.measure &&
           _slideController.value == 0.0) {
-        // Measure advanced — capture evaluated states for the measure leaving
-        // slot 1, add the entering item, then slide the column up.
         final states = exerciseController.lastCompletedStates;
-        _queueStates = [
-          ..._queueStates,
-          null, // entering slot has no evaluated states yet
-        ];
+        _queueStates = [..._queueStates, null];
         if (states != null) {
           _queueStates[1] = states;
         }
@@ -214,9 +272,140 @@ class _ExercisePageState extends State<ExercisePage>
     return lerpDouble(from, to, animValue)!;
   }
 
+  /// Static queue shown during preview and count-in.
+  /// Same 4-slot layout as the running queue (played slot empty at top).
+  Widget _buildStaticQueue() {
+    final measures = exerciseController.visibleMeasure.take(3).toList();
+
+    return SizedBox(
+      height: 4 * _itemHeight,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          for (int i = 0; i < measures.length; i++)
+            Positioned(
+              top: (i + 1) * _itemHeight,
+              left: 0,
+              right: 0,
+              height: _itemHeight,
+              child: Opacity(
+                opacity: _slotOpacities[i + 1],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    measures[i].quarters.length,
+                    (index) => Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: QuarterTile(
+                        key: ObjectKey((measures[i], index)),
+                        state: QuarterState.neutral,
+                        isActive: false,
+                        child: Image.asset(
+                          measures[i].quarters[index].assetPath,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRunningQueue(MeasureController measureController) {
+    return AnimatedBuilder(
+      animation: _slideAnim,
+      builder: (context, _) {
+        final animValue = _slideAnim.value;
+        final slideOffset = animValue * _itemHeight;
+
+        return SizedBox(
+          height: 4 * _itemHeight,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: List.generate(_animatedQueue.length, (i) {
+              final m = _animatedQueue[i];
+              final opacity = _opacityForIndex(i, animValue);
+
+              return Positioned(
+                top: i * _itemHeight - slideOffset,
+                left: 0,
+                right: 0,
+                height: _itemHeight,
+                child: Opacity(
+                  opacity: opacity.clamp(0.0, 1.0),
+                  child: m == null
+                      ? const SizedBox.shrink()
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            m.quarters.length,
+                            (index) {
+                              final isCurrent = m == measureController.measure;
+                              final quarter = m.quarters[index];
+                              final slotStates = _queueStates[i];
+                              final state = isCurrent
+                                  ? measureController.quarterStates[index]
+                                  : slotStates != null
+                                      ? slotStates[index]
+                                      : QuarterState.neutral;
+                              final isActive = isCurrent &&
+                                  measureController.currentQuarterIndex ==
+                                      index;
+
+                              return Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: QuarterTile(
+                                  key: ObjectKey((m, index)),
+                                  state: state,
+                                  isActive: isActive,
+                                  child: Image.asset(
+                                    quarter.assetPath,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCountdownWidget() {
+    if (_countdownLabel == null) return const SizedBox.shrink();
+
+    final isGo = _countdownLabel == 'GO!';
+    return ScaleTransition(
+      scale: _stampAnim,
+      child: Text(
+        _countdownLabel!,
+        style: TextStyle(
+          fontSize: isGo ? 56 : 80,
+          fontWeight: FontWeight.w900,
+          color: isGo
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final measureController = exerciseController.currentMeasureController;
+    final isPreview = _pageState == _PageState.preview;
+    final isCountIn = _pageState == _PageState.countIn;
+    final isRunning = _pageState == _PageState.running;
 
     return Scaffold(
       appBar: AppBar(
@@ -227,94 +416,53 @@ class _ExercisePageState extends State<ExercisePage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (exerciseController.isRunning) _buildModeInfo(context),
+            if (isRunning && exerciseController.isRunning)
+              _buildModeInfo(context),
 
             const SizedBox(height: 24),
 
-            if (!exerciseController.isRunning)
-              ElevatedButton(
-                onPressed: _startExercise,
-                child: const Text('Start'),
+            // Queue: static during preview/countIn, animated during running
+            if ((isPreview || isCountIn) &&
+                exerciseController.visibleMeasure.isNotEmpty)
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  _buildStaticQueue(),
+                  if (isCountIn) _buildCountdownWidget(),
+                ],
               ),
 
-            if (exerciseController.isRunning)
+            if (isRunning &&
+                measureController != null &&
+                _animatedQueue.isNotEmpty)
+              _buildRunningQueue(measureController),
+
+            const SizedBox(height: 24),
+
+            if (isPreview)
+              ElevatedButton(
+                onPressed: _startCountIn,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 32,
+                  ),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
+                child: const Text(
+                  'Start',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+            if (isRunning)
               TextButton(
                 onPressed: () => setState(() => exerciseController.stop()),
                 child: const Text('Stop'),
-              ),
-
-            if (measureController != null && _animatedQueue.isNotEmpty)
-              AnimatedBuilder(
-                animation: _slideAnim,
-                builder: (context, _) {
-                  final animValue = _slideAnim.value;
-                  final slideOffset = animValue * _itemHeight;
-
-                  return SizedBox(
-                    height: 4 * _itemHeight,
-                    child: Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: List.generate(_animatedQueue.length, (i) {
-                        final m = _animatedQueue[i];
-                        final opacity = _opacityForIndex(i, animValue);
-
-                        return Positioned(
-                          top: i * _itemHeight - slideOffset,
-                          left: 0,
-                          right: 0,
-                          height: _itemHeight,
-                          child: Opacity(
-                            opacity: opacity.clamp(0.0, 1.0),
-                            child:
-                                m == null
-                                    ? const SizedBox.shrink()
-                                    : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: List.generate(
-                                        m.quarters.length,
-                                        (index) {
-                                          final isCurrent =
-                                              m == measureController.measure;
-                                          final quarter = m.quarters[index];
-                                          final slotStates = _queueStates[i];
-                                          final state =
-                                              isCurrent
-                                                  ? measureController
-                                                      .quarterStates[index]
-                                                  : slotStates != null
-                                                  ? slotStates[index]
-                                                  : QuarterState.neutral;
-                                          final isActive =
-                                              isCurrent &&
-                                              measureController
-                                                      .currentQuarterIndex ==
-                                                  index;
-
-                                          return Padding(
-                                            padding: const EdgeInsets.all(10),
-                                            child: QuarterTile(
-                                              key: ObjectKey((m, index)),
-                                              state: state,
-                                              isActive: isActive,
-                                              child: Image.asset(
-                                                quarter.assetPath,
-                                                color:
-                                                    Theme.of(
-                                                      context,
-                                                    ).colorScheme.onSurface,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                          ),
-                        );
-                      }),
-                    ),
-                  );
-                },
               ),
           ],
         ),
@@ -324,7 +472,9 @@ class _ExercisePageState extends State<ExercisePage>
 
   @override
   void dispose() {
+    _countInTimer?.cancel();
     _slideController.dispose();
+    _stampController.dispose();
     exerciseController.removeListener(_onControllerChanged);
     exerciseController.dispose();
     _sensor.stop();
