@@ -66,6 +66,7 @@ class _ExercisePageState extends State<ExercisePage>
   late AnimationController _stampController;
   late Animation<double> _stampAnim;
 
+  bool _loading = true;
   bool _wasRunning = false;
   bool _resultShown = false;
   DateTime? _exerciseStartTime;
@@ -112,7 +113,9 @@ class _ExercisePageState extends State<ExercisePage>
       exerciseController.currentMeasureController?.onHit(timestampMs);
     };
 
-    exerciseController.preview();
+    exerciseController.preview().then((_) {
+      if (mounted) setState(() => _loading = false);
+    });
   }
 
   void _startCountIn() {
@@ -421,25 +424,37 @@ class _ExercisePageState extends State<ExercisePage>
 
             const SizedBox(height: 24),
 
-            // Queue: static during preview/countIn, animated during running
-            if ((isPreview || isCountIn) &&
-                exerciseController.visibleMeasure.isNotEmpty)
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  _buildStaticQueue(),
-                  if (isCountIn) _buildCountdownWidget(),
-                ],
-              ),
-
-            if (isRunning &&
-                measureController != null &&
-                _animatedQueue.isNotEmpty)
-              _buildRunningQueue(measureController),
+            // Queue: loading spinner → static preview → animated running
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: _loading
+                  ? const SizedBox(
+                      key: ValueKey('loading'),
+                      height: 4 * _itemHeight,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : (isPreview || isCountIn)
+                      ? Stack(
+                          key: const ValueKey('static'),
+                          alignment: Alignment.center,
+                          children: [
+                            _buildStaticQueue(),
+                            if (isCountIn) _buildCountdownWidget(),
+                          ],
+                        )
+                      : (isRunning &&
+                              measureController != null &&
+                              _animatedQueue.isNotEmpty)
+                          ? KeyedSubtree(
+                              key: const ValueKey('running'),
+                              child: _buildRunningQueue(measureController),
+                            )
+                          : const SizedBox(key: ValueKey('empty')),
+            ),
 
             const SizedBox(height: 24),
 
-            if (isPreview)
+            if (isPreview && !_loading)
               ElevatedButton(
                 onPressed: _startCountIn,
                 style: ElevatedButton.styleFrom(
