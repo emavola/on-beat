@@ -145,6 +145,33 @@ class ExerciseController extends ChangeNotifier {
     currentMeasureController?.startMeasure(startTime);
   }
 
+  /// Pauses the exercise — freezes the current measure's timer.
+  void pauseExercise() {
+    currentMeasureController?.pause();
+    notifyListeners();
+  }
+
+  /// Prepares a clean resume: replaces the current MeasureController with a
+  /// fresh one for the same measure and BPM, without starting timing.
+  /// Call [beginTiming] after the count-in to start the measure from quarter 0.
+  void prepareResume() {
+    final measure = visibleMeasure.first;
+    currentMeasureController?.removeListener(notifyListeners);
+    currentMeasureController?.dispose();
+
+    final controller = MeasureController(
+      measure: measure,
+      bpm: _currentBpm.toDouble(),
+      metronome: metronome,
+    );
+    controller.onMeasureCompleted = (states, endTime) =>
+        _handleMeasureResult(states, endTime);
+    controller.onQuarterCompleted = (state) => _handleQuarterResult(state);
+    currentMeasureController = controller;
+    controller.addListener(notifyListeners);
+    notifyListeners();
+  }
+
   /// Ferma l'esercizio
   void stop() {
     metronome.dispose();

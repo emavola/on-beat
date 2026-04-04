@@ -21,7 +21,7 @@ HitSensor _sensorForType(SensorType type) => switch (type) {
   SensorType.mixed => MixedSensor(),
 };
 
-enum _PageState { preview, countIn, running }
+enum _PageState { preview, countIn, running, paused }
 
 class ExercisePage extends StatefulWidget {
   final SensorType sensorType;
@@ -63,6 +63,7 @@ class _ExercisePageState extends State<ExercisePage>
   String? _countdownLabel;
   int _countdownStep = 0;
   Timer? _countInTimer;
+  bool _resumingFromPause = false;
   late AnimationController _stampController;
   late Animation<double> _stampAnim;
 
@@ -118,23 +119,47 @@ class _ExercisePageState extends State<ExercisePage>
     });
   }
 
-  void _startCountIn() {
+  // ---------------------------------------------------------------------------
+  // Count-in
+  // ---------------------------------------------------------------------------
+
+  void _startCountIn({bool resuming = false}) {
+    _resumingFromPause = resuming;
+
+    if (resuming) {
+      // Reset the current measure to neutral states immediately so the queue
+      // looks clean during the count-in, not frozen mid-evaluation.
+      exerciseController.prepareResume();
+      final playedMeasure = _animatedQueue.isNotEmpty ? _animatedQueue[0] : null;
+      final playedStates = _queueStates.isNotEmpty ? _queueStates[0] : null;
+      _animatedQueue = [playedMeasure, ...exerciseController.visibleMeasure.take(3)];
+      _queueStates = [playedStates, null, null, null];
+    }
+
     setState(() {
       _pageState = _PageState.countIn;
       _countdownStep = 0;
+      _countdownLabel = null;
     });
 
+    // Reset tick index so beat "3" is always a strong click and the exercise
+    // first beat lands on strong too (4 count-in beats → _tickIndex back to 0).
+    exerciseController.metronome.reset();
+
     final beatDuration = Duration(
-      milliseconds: (60000 / widget.bpm).round(),
+      milliseconds: (60000 / exerciseController.currentBpm).round(),
     );
 
-    // Fire the first beat ("3") immediately
     _fireCountInBeat();
 
     _countInTimer = Timer.periodic(beatDuration, (timer) {
       if (_countdownStep >= 4) {
         timer.cancel();
-        _launchExercise();
+        if (_resumingFromPause) {
+          _resumeExercise();
+        } else {
+          _launchExercise();
+        }
       } else {
         _fireCountInBeat();
       }
@@ -157,9 +182,15 @@ class _ExercisePageState extends State<ExercisePage>
     _stampController.forward(from: 0.0);
   }
 
+  // ---------------------------------------------------------------------------
+  // Launch (first start)
+  // ---------------------------------------------------------------------------
+
   Future<void> _launchExercise() async {
-    _animatedQueue = [];
-    _queueStates = [];
+    // Pre-populate from the preview queue so AnimatedSwitcher never sees an
+    // empty frame between count-in and the first running frame.
+    _animatedQueue = [null, ...exerciseController.visibleMeasure.take(3)];
+    _queueStates = [null, null, null, null];
     _slideController.stop();
     _slideController.reset();
     _exerciseStartTime = DateTime.now();
@@ -174,6 +205,43 @@ class _ExercisePageState extends State<ExercisePage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       exerciseController.beginTiming();
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pause / Resume
+  // ---------------------------------------------------------------------------
+
+  void _pauseExercise() {
+    _countInTimer?.cancel();
+    _slideController.stop();
+    _slideController.reset();
+    _sensor.stop();
+    exerciseController.pauseExercise();
+    setState(() => _pageState = _PageState.paused);
+  }
+
+  void _resumeExercise() {
+    // prepareResume() and queue reset already done at the start of _startCountIn.
+    setState(() {
+      _pageState = _PageState.running;
+      _countdownLabel = null;
+    });
+
+    _sensor.start();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      exerciseController.beginTiming();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Quit / Result
+  // ---------------------------------------------------------------------------
+
+  void _quitExercise() {
+    _countInTimer?.cancel();
+    _sensor.stop();
+    exerciseController.stop();
+    if (mounted) Navigator.of(context).pop();
   }
 
   void _navigateToResult() {
@@ -202,15 +270,65 @@ class _ExercisePageState extends State<ExercisePage>
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // PopScope dialog
+  // ---------------------------------------------------------------------------
+
+  Future<bool> _onPopRequested() async {
+    if (_pageState == _PageState.preview || _pageState == _PageState.countIn) {
+      _countInTimer?.cancel();
+      return true; // allow pop freely
+    }
+
+    // Running or paused: ask the user
+    final result = await showDialog<_QuitAction>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Exercise in progress'),
+        content: const Text('What do you want to do?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _QuitAction.cancel),
+            child: const Text('Cancel'),
+          ),
+          if (_pageState == _PageState.running)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _QuitAction.pause),
+              child: const Text('Pause'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _QuitAction.quit),
+            child: const Text('Quit', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == _QuitAction.pause) {
+      _pauseExercise();
+      return false;
+    }
+    if (result == _QuitAction.quit) {
+      _quitExercise();
+      return false; // _quitExercise pops manually
+    }
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Controller listener
+  // ---------------------------------------------------------------------------
+
   void _onControllerChanged() {
     final isRunning = exerciseController.isRunning;
-    if (_wasRunning && !isRunning) _navigateToResult();
+    if (_wasRunning && !isRunning && _pageState == _PageState.running) {
+      _navigateToResult();
+    }
     _wasRunning = isRunning;
 
     final mc = exerciseController.currentMeasureController;
     if (mc != null && _pageState == _PageState.running) {
       if (_animatedQueue.isEmpty) {
-        // First population: empty played slot + current + next + next+1
         _animatedQueue = [null, ...exerciseController.visibleMeasure.take(3)];
         _queueStates = [null, null, null, null];
       } else if (_animatedQueue.length >= 2 &&
@@ -228,6 +346,10 @@ class _ExercisePageState extends State<ExercisePage>
     }
     setState(() {});
   }
+
+  // ---------------------------------------------------------------------------
+  // UI builders
+  // ---------------------------------------------------------------------------
 
   Widget _buildModeInfo(BuildContext context) {
     final ec = exerciseController;
@@ -275,45 +397,46 @@ class _ExercisePageState extends State<ExercisePage>
     return lerpDouble(from, to, animValue)!;
   }
 
-  /// Static queue shown during preview and count-in.
-  /// Same 4-slot layout as the running queue (played slot empty at top).
-  Widget _buildStaticQueue() {
+  Widget _buildStaticQueue({double overallOpacity = 1.0}) {
     final measures = exerciseController.visibleMeasure.take(3).toList();
 
-    return SizedBox(
-      height: 4 * _itemHeight,
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          for (int i = 0; i < measures.length; i++)
-            Positioned(
-              top: (i + 1) * _itemHeight,
-              left: 0,
-              right: 0,
-              height: _itemHeight,
-              child: Opacity(
-                opacity: _slotOpacities[i + 1],
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    measures[i].quarters.length,
-                    (index) => Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: QuarterTile(
-                        key: ObjectKey((measures[i], index)),
-                        state: QuarterState.neutral,
-                        isActive: false,
-                        child: Image.asset(
-                          measures[i].quarters[index].assetPath,
-                          color: Theme.of(context).colorScheme.onSurface,
+    return Opacity(
+      opacity: overallOpacity,
+      child: SizedBox(
+        height: 4 * _itemHeight,
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            for (int i = 0; i < measures.length; i++)
+              Positioned(
+                top: (i + 1) * _itemHeight,
+                left: 0,
+                right: 0,
+                height: _itemHeight,
+                child: Opacity(
+                  opacity: _slotOpacities[i + 1],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      measures[i].quarters.length,
+                      (index) => Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: QuarterTile(
+                          key: ObjectKey((measures[i], index)),
+                          state: QuarterState.neutral,
+                          isActive: false,
+                          child: Image.asset(
+                            measures[i].quarters[index].assetPath,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -367,8 +490,9 @@ class _ExercisePageState extends State<ExercisePage>
                                   isActive: isActive,
                                   child: Image.asset(
                                     quarter.assetPath,
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                   ),
                                 ),
                               );
@@ -403,83 +527,139 @@ class _ExercisePageState extends State<ExercisePage>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final measureController = exerciseController.currentMeasureController;
     final isPreview = _pageState == _PageState.preview;
     final isCountIn = _pageState == _PageState.countIn;
     final isRunning = _pageState == _PageState.running;
+    final isPaused = _pageState == _PageState.paused;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('On Beat'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isRunning && exerciseController.isRunning)
-              _buildModeInfo(context),
-
-            const SizedBox(height: 24),
-
-            // Queue: loading spinner → static preview → animated running
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              child: _loading
-                  ? const SizedBox(
-                      key: ValueKey('loading'),
-                      height: 4 * _itemHeight,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : (isPreview || isCountIn)
-                      ? Stack(
-                          key: const ValueKey('static'),
-                          alignment: Alignment.center,
-                          children: [
-                            _buildStaticQueue(),
-                            if (isCountIn) _buildCountdownWidget(),
-                          ],
-                        )
-                      : (isRunning &&
-                              measureController != null &&
-                              _animatedQueue.isNotEmpty)
-                          ? KeyedSubtree(
-                              key: const ValueKey('running'),
-                              child: _buildRunningQueue(measureController),
-                            )
-                          : const SizedBox(key: ValueKey('empty')),
-            ),
-
-            const SizedBox(height: 24),
-
-            if (isPreview && !_loading)
-              ElevatedButton(
-                onPressed: _startCountIn,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 32,
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                ),
-                child: const Text(
-                  'Start',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (!didPop) await _onPopRequested();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('On Beat'),
+          centerTitle: true,
+          actions: [
             if (isRunning)
-              TextButton(
-                onPressed: () => setState(() => exerciseController.stop()),
-                child: const Text('Stop'),
+              IconButton(
+                icon: const Icon(Icons.pause),
+                tooltip: 'Pause',
+                onPressed: _pauseExercise,
               ),
           ],
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isRunning && exerciseController.isRunning)
+                _buildModeInfo(context),
+
+              const SizedBox(height: 24),
+
+              // Queue area.
+              // 'static' key: initial preview / initial count-in (no played slot yet).
+              // 'running' key: running, paused, and resume count-in — same key so
+              //   AnimatedSwitcher never transitions between them, preserving the
+              //   played slot at index 0 throughout.
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                child: _loading
+                    ? const SizedBox(
+                        key: ValueKey('loading'),
+                        height: 4 * _itemHeight,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : (isPreview || (isCountIn && !_resumingFromPause))
+                        ? Stack(
+                            key: const ValueKey('static'),
+                            alignment: Alignment.center,
+                            children: [
+                              _buildStaticQueue(),
+                              if (isCountIn) _buildCountdownWidget(),
+                            ],
+                          )
+                        : (measureController != null && _animatedQueue.isNotEmpty)
+                            ? Stack(
+                                key: const ValueKey('running'),
+                                alignment: Alignment.center,
+                                children: [
+                                  Opacity(
+                                    opacity: isPaused ? 0.4 : 1.0,
+                                    child: _buildRunningQueue(measureController),
+                                  ),
+                                  if (isCountIn) _buildCountdownWidget(),
+                                ],
+                              )
+                            : const SizedBox(key: ValueKey('empty')),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Action buttons
+              if (isPreview && !_loading)
+                ElevatedButton(
+                  onPressed: _startCountIn,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 32,
+                    ),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  child: const Text(
+                    'Start',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+              if (isPaused) ...[
+                const Text(
+                  'PAUSED',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _startCountIn(resuming: true),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Resume'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 28,
+                    ),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _quitExercise,
+                  child: const Text(
+                    'Quit',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -496,6 +676,8 @@ class _ExercisePageState extends State<ExercisePage>
     super.dispose();
   }
 }
+
+enum _QuitAction { cancel, pause, quit }
 
 class _InfoChip extends StatelessWidget {
   final String label;
