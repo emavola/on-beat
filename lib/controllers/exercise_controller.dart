@@ -23,12 +23,7 @@ enum ExerciseDifficulty {
       };
 }
 
-// TODO(architecture): consider refactoring game mode logic into a strategy
-// pattern once the per-mode UI is defined. Each mode would become a separate
-// class implementing a GameMode interface (onQuarterResult, onMeasureResult,
-// shouldStop, exposed state for UI). ExerciseController would delegate to the
-// active GameMode instance. Right now the if/switch chains are manageable —
-// refactor when you know exactly what each mode's UI needs to expose.
+
 class ExerciseController extends ChangeNotifier {
   final ExerciseMode mode;
   final ExerciseDifficulty difficulty;
