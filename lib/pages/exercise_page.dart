@@ -29,12 +29,17 @@ class ExercisePage extends StatefulWidget {
   final ExerciseDifficulty difficulty;
   final int bpm;
 
+  /// Optional fixed measures to play (from the rhythm scanner). When set, the
+  /// page runs challenge-style through exactly these measures.
+  final List<MeasureModel>? scriptedMeasures;
+
   const ExercisePage({
     super.key,
     this.sensorType = SensorType.accelerometer,
     this.mode = ExerciseMode.normal,
     this.difficulty = ExerciseDifficulty.easy,
     this.bpm = 80,
+    this.scriptedMeasures,
   });
 
   @override
@@ -81,6 +86,9 @@ class _ExercisePageState extends State<ExercisePage>
       mode: widget.mode,
       difficulty: widget.difficulty,
       startBpm: widget.bpm,
+      scriptedMeasures: widget.scriptedMeasures,
+      challengeTotalMeasures: widget.scriptedMeasures?.length ??
+          ExerciseController.defaultChallengeMeasures,
     );
     exerciseController.addListener(_onControllerChanged);
 

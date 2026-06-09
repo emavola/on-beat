@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/session_doc.dart';
 import '../pages/exercise_setup_sheet.dart';
+import '../pages/scan_rhythm_page.dart';
 import '../services/session_repository.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -99,6 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Spacer(),
             _buildStartButton(context),
+            const SizedBox(height: 12),
+            _buildScanButton(context),
             const SizedBox(height: 32),
           ],
         ),
@@ -273,6 +276,23 @@ class _HomeScreenState extends State<HomeScreen> {
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 18),
           textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScanButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ScanRhythmPage()),
+        ),
+        icon: const Icon(Icons.document_scanner_outlined),
+        label: const Text('Scan a rhythm'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );

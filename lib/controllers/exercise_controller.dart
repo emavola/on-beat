@@ -50,7 +50,7 @@ class ExerciseController extends ChangeNotifier {
   static const int _streakForLife = 4;
 
   // Challenge constant
-  static const int _defaultChallengeMeasures = 16;
+  static const int defaultChallengeMeasures = 16;
 
   int lives;
   int _currentBpm = 60;
@@ -84,11 +84,18 @@ class ExerciseController extends ChangeNotifier {
 
   final int challengeTotalMeasures;
 
+  /// When non-null, the exercise plays these measures in order instead of
+  /// generating random ones (used by the rhythm scanner). The exercise runs
+  /// challenge-style and ends once all scripted measures have been played.
+  final List<MeasureModel>? scriptedMeasures;
+  int _scriptCursor = 0;
+
   ExerciseController({
     required this.mode,
     this.difficulty = ExerciseDifficulty.easy,
     this.startBpm = 60,
-    this.challengeTotalMeasures = _defaultChallengeMeasures,
+    this.challengeTotalMeasures = defaultChallengeMeasures,
+    this.scriptedMeasures,
   }) : lives = mode == ExerciseMode.normal
             ? maxLives
             : mode == ExerciseMode.survival
@@ -202,7 +209,7 @@ class ExerciseController extends ChangeNotifier {
     if (isFisrtMeasure) {
       isFisrtMeasure = false;
     } else {
-      _addMeasure(_generateRandomMeasure());
+      _addMeasure(_nextMeasure());
     }
 
     final measure = visibleMeasure.first;
@@ -329,6 +336,17 @@ class ExerciseController extends ChangeNotifier {
     );
   }
 
+  /// Next measure to enqueue: the next scripted (scanned) measure if any remain,
+  /// otherwise a random one. Filler randoms past the script are never reached
+  /// because the challenge stop condition fires at [challengeTotalMeasures].
+  MeasureModel _nextMeasure() {
+    final scripted = scriptedMeasures;
+    if (scripted != null && _scriptCursor < scripted.length) {
+      return scripted[_scriptCursor++];
+    }
+    return _generateRandomMeasure();
+  }
+
   void _addMeasure(MeasureModel measure) {
     visibleMeasure.removeFirst();
     visibleMeasure.addLast(measure);
@@ -336,7 +354,7 @@ class ExerciseController extends ChangeNotifier {
 
   void _initRandomMeasure() {
     visibleMeasure.addAll(
-      List.generate(queueLength, (_) => _generateRandomMeasure()),
+      List.generate(queueLength, (_) => _nextMeasure()),
     );
   }
 }
